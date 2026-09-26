@@ -77,7 +77,7 @@ try {
   const amount = page.getByLabel('Amount', { exact: true }), recipient = page.getByRole('combobox').first();
   await expect(snapshotButton).toBeEnabled();
   await recipient.selectOption('L2');
-  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Using saved simulated assessment');
+  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Saved simulated assessment');
   await expect(page.locator('.private-risk-saved-assessment')).toContainText('No rescan required');
   await expect(page.locator('.private-risk-primary')).toHaveCount(0);
   await amount.fill('0.001');assert.equal(scanPosts,0);

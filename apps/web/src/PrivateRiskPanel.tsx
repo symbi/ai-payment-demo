@@ -188,13 +188,13 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
   const savedAssessment = loading ? 'Loading saved assessment…'
     : record?.state === 'pending' ? 'Assessment pending'
       : record?.state === 'unavailable' ? 'Saved assessment unavailable'
-        : liveEvidence ? (offlineFixture ? 'Using saved simulated assessment' : 'Using saved live assessment')
+        : liveEvidence ? (offlineFixture ? 'Saved simulated assessment' : 'Saved live assessment')
           : 'Using saved assessment · Evidence unavailable';
   const savedAssessmentNote = record?.state === 'pending'
     ? 'Refresh saved records to check the existing attempt. Do not submit another assessment.'
     : record?.state === 'unavailable'
       ? 'The saved attempt did not provide usable evidence. No automatic rescan. Refresh saved records to query its saved status.'
-      : 'No rescan required. Amount changes re-evaluate saved evidence locally. Refresh saved records does not refresh provider evidence or establish current safety.';
+      : 'Using existing evidence — no rescan. No rescan required. Amount changes re-evaluate saved evidence locally. Refresh saved records does not refresh provider evidence or establish current safety.';
 
   if (!candidate) return <main className="private-risk-panel"><p className="private-risk-message" role="alert">The selected recipient was not found.</p></main>;
   return <main className="private-risk-panel" aria-labelledby="private-risk-title">
@@ -218,15 +218,17 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
         <select id="private-risk-candidate" value={selectedId} disabled={loading} onChange={event => onSelect(event.target.value as PrivateRiskPanelProps['selectedId'])}>
           {PRIVATE_RISK_CANDIDATES.map(item => <option key={item.id} value={item.id}>Case {item.id}</option>)}
         </select>
+        <p className="private-risk-note">Selecting a recipient only looks up saved records; it does not run a risk check.</p>
         <code className="private-risk-address">{candidate.address}</code>
         <div className="private-risk-intent-grid">
           <label htmlFor="private-risk-amount">Amount<input id="private-risk-amount" inputMode="decimal" value={amountUsdc} disabled={loading} onChange={event => setAmountUsdc(event.target.value)} /></label>
           <div><span className="private-risk-label">Asset</span><strong>USDC</strong></div>
           <div><span className="private-risk-label">Network</span><strong>Ethereum Mainnet for screening</strong><small>eip155:1 · Coverage: unverified</small></div>
         </div>
+        <p className="private-risk-note">Amount is the intended payment amount. Editing it only recalculates local policy; it does not contact the provider or send a payment.</p>
         {record
           ? <div className="private-risk-saved-assessment" role="status"><strong>{savedAssessment}</strong><p className="private-risk-note">{savedAssessmentNote}</p></div>
-          : <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>{offlineFixture ? 'Run simulated assessment' : 'Run live assessment'}</button>}
+          : <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>{offlineFixture ? 'Run Simulated Risk Check' : 'Run Live Risk Check'}</button>}
         <p className="private-risk-note">Screened before any signing or execution.</p>
         {!record && <p className="private-risk-status-copy">{loading ? 'Assessment in progress…' : scanDisabledReason || 'Manual one-address assessment. One attempt; no automatic retry.'}</p>}
         {message && <p className="private-risk-message" role="status">Address assessment state changed. Review the saved status and technical details.</p>}
@@ -262,7 +264,7 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
       <section className="private-risk-card private-risk-execution" aria-labelledby="private-risk-execution-title">
         <div className="private-risk-step"><span>04</span><div><p>STEP 04</p><h2 id="private-risk-execution-title">Execution gating</h2></div></div>
         <div className="private-risk-gate">
-          <div><span className="private-risk-label">Execution</span><strong>Execution: NOT CONNECTED</strong></div>
+          <div><span className="private-risk-label">Execution</span><strong>Payment execution — NOT CONNECTED</strong></div>
           <div><span className="private-risk-label">Next action</span><p>{copy.next}</p></div>
         </div>
         <details className="private-risk-details private-risk-audit">

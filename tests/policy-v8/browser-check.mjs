@@ -57,7 +57,7 @@ try{
  await page.goto(origin);
  await assertFixturePresentation();
  await expect(page.getByRole('heading',{name:'Agent Payment Guard',exact:true})).toBeVisible();
- const assess=page.getByRole('button',{name:'Run simulated assessment',exact:true});
+ const assess=page.getByRole('button',{name:'Run Simulated Risk Check',exact:true});
  const amount=page.getByLabel(/Amount/).first();
  const recipient=page.getByRole('combobox').first();
  await expect(amount).toHaveValue('0.005');
@@ -111,7 +111,7 @@ try{
  await amount.fill('0.005');await expect(page.locator('.private-risk-policy').getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,1);
  checks.push('empty live evidence allows in policy only; invalid amount removes allow without POST');
  await outcome('H2','ALLOW WITH LIMIT');
- await expect(page.locator('.private-risk-saved-assessment')).toContainText('Using saved simulated assessment');
+ await expect(page.locator('.private-risk-saved-assessment')).toContainText('Saved simulated assessment');
  await expect(page.locator('.private-risk-saved-assessment')).toContainText('No rescan required');
  await expect(page.getByText(/0\.001/).first()).toBeVisible();
  await page.screenshot({path:new URL('limited-desktop.png',output).pathname,fullPage:true});

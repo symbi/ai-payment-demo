@@ -153,7 +153,7 @@ describe('four-step payment decision demo contract', () => {
     expect(text).toContain('USDC');
     expect(text).toContain('Ethereum Mainnet for screening');
     expect(text).toMatch(/Coverage:? unverified/i);
-    expect(text).toContain('Run live assessment');
+    expect(text).toContain('Run Live Risk Check');
     expect(text).toContain('Screened before any signing or execution.');
     expect(html).toMatch(/<option[^>]*>Case H1<\/option>/);
     expect(text).toContain(candidate('H1').address);
@@ -173,7 +173,7 @@ describe('four-step payment decision demo contract', () => {
     expect(text).toMatch(/project-defined demo rules? use Intercepta observations/i);
     expect(text).toMatch(/not an Intercepta verdict/i);
     expect(text).toContain(decision);
-    expect(text).toContain('Execution: NOT CONNECTED');
+    expect(text).toContain('Payment execution — NOT CONNECTED');
     expect(text).not.toContain('Payment completed');
     expect(text).not.toContain('Payment sent');
     expect(enabledInteractiveControlLabels(html)).not.toEqual(
@@ -190,7 +190,7 @@ describe('four-step payment decision demo contract', () => {
       expect(text).toContain('Toxic Score');
       expect(text).toContain('50');
       expect(text).not.toContain('50%');
-      expect(text).toContain('Execution: NOT CONNECTED');
+      expect(text).toContain('Payment execution — NOT CONNECTED');
     }
     expect(mixer).toContain('mixer_transfers');
     expect(mixer).toContain('ALLOW WITH LIMIT');
@@ -263,7 +263,7 @@ describe('four-step payment decision demo contract', () => {
     const text = visibleText(renderLivePanel('H1', [liveEmpty], { loading: true }));
 
     expect(text).toContain('HOLD');
-    expect(text).toContain('Execution: NOT CONNECTED');
+    expect(text).toContain('Payment execution — NOT CONNECTED');
     expect(text).not.toContain('ALLOW');
   });
 });

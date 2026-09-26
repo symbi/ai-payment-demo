@@ -33,7 +33,7 @@ it('disables scanning when status is not ready, exhausted, or pending', () => {
   const notReady = renderLivePanel(createElement(PrivateRiskPanel, props(baseStatus({ ready: false, message: '需私人电脑启动' }))));
   const exhausted = renderLivePanel(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 3 }))));
   const pending = renderLivePanel(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [{ candidateId: 'G1', state: 'pending', attemptedAt: '2026-09-27T01:00:00.000Z', risk: null }] }))));
-  for (const html of [notReady, exhausted, pending]) expect(html).toContain('Run live assessment');
+  for (const html of [notReady, exhausted, pending]) expect(html).toContain('Run Live Risk Check');
   expect(notReady).toContain('not ready on this device'); expect(notReady).not.toContain('需私人电脑启动'); expect(exhausted).toContain('3/3'); expect(pending).toContain('A scan is pending');
 });
 
@@ -54,7 +54,7 @@ it('renders unavailable records as failed evidence and keeps selected records se
 
 it('renders pending as unconfirmed and does not claim that it was never requested', () => {
   const html = renderLivePanel(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [{ candidateId: 'H1', state: 'pending', attemptedAt: '2026-09-27T01:00:00.000Z', risk: null }] }))));
-  expect(html).toContain('Assessment pending'); expect(html).toContain('HOLD'); expect(html).toContain('Execution: NOT CONNECTED');
+  expect(html).toContain('Assessment pending'); expect(html).toContain('HOLD'); expect(html).toContain('Payment execution — NOT CONNECTED');
 });
 
 it.each([
@@ -95,7 +95,7 @@ it.each([false, true])('shows saved L2 evidence as a non-button status (fixture=
   Object.assign(record.risk.scan, { httpStatus: 200, unknownTraitsCount: 0, traitsCount: 0, traitLabels: [] });
   const status = baseStatus({ maxRequests: 200, usedRequests: 1, records: [record] });
   const html = renderLivePanel(createElement(PrivateRiskPanel, { ...props(status), selectedId: 'L2', offlineFixture }));
-  expect(html).toContain(offlineFixture ? 'Using saved simulated assessment' : 'Using saved live assessment');
+  expect(html).toContain(offlineFixture ? 'Saved simulated assessment' : 'Saved live assessment');
   expect(html).toContain('No rescan required'); expect(html).toContain('does not refresh provider evidence');
   expect(html).not.toContain('private-risk-primary'); expect(html).not.toContain('Assess Payment');
   expect(html).toMatch(/<button[^>]*>Refresh saved records<\/button>/);
@@ -106,14 +106,14 @@ it.each(['unavailable', 'pending', 'loading', 'legacy'] as const)('does not pres
     ? { candidateId: 'H1' as const, state, attemptedAt: '2026-09-27T00:00:00Z', risk: null }
     : completed('H1', 0);
   const html = renderLivePanel(createElement(PrivateRiskPanel, { ...props(baseStatus({ records: [record] })), loading: state === 'loading' }));
-  expect(html).not.toContain('private-risk-primary'); expect(html).not.toContain('Using saved live assessment');
+  expect(html).not.toContain('private-risk-primary'); expect(html).not.toContain('Saved live assessment');
   expect(html).toContain({ unavailable: 'Saved assessment unavailable', pending: 'Assessment pending', loading: 'Loading saved assessment', legacy: 'Using saved assessment · Evidence unavailable' }[state]);
   if (state === 'pending') expect(html).toContain('Do not submit another assessment');
 });
 
 it.each([false, true])('only offers a first assessment with the correct provenance label (fixture=%s)', offlineFixture => {
   const html = renderLivePanel(createElement(PrivateRiskPanel, { ...props(baseStatus()), offlineFixture }));
-  expect(html).toMatch(new RegExp(`<button class="private-risk-primary" type="button">Run ${offlineFixture ? 'simulated' : 'live'} assessment</button>`));
+  expect(html).toMatch(new RegExp(`<button class="private-risk-primary" type="button">Run ${offlineFixture ? 'Simulated' : 'Live'} Risk Check</button>`));
   expect(html).not.toContain('private-risk-saved-assessment');
 });
 
@@ -125,6 +125,16 @@ it('preserves disabled first-assessment guards for loading, missing status, not-
   ];
   for (const item of cases) {
     const html = renderLivePanel(createElement(PrivateRiskPanel, item));
-    expect(html).toMatch(/<button class="private-risk-primary" type="button" disabled="">Run live assessment<\/button>/);
+    expect(html).toMatch(/<button class="private-risk-primary" type="button" disabled="">Run Live Risk Check<\/button>/);
   }
+});
+
+it('explains selection and amount without offering payment execution', () => {
+  const html = renderLivePanel(createElement(PrivateRiskPanel, props(baseStatus())));
+  expect(html).toContain('Selecting a recipient only looks up saved records');
+  expect(html).toContain('Amount is the intended payment amount');
+  expect(html).toContain('does not contact the provider or send a payment');
+  expect(html).toContain('Payment execution — NOT CONNECTED');
+  expect(html).not.toMatch(/<button[^>]*>(?:Pay|Execute Payment)<\/button>/);
+  expect(html).not.toContain('Ready for execution');
 });
