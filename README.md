@@ -1,5 +1,17 @@
 # Intercepta payment gate — local demo
 
+## Current preview: offline Pay + weighted assessment
+
+For the current demonstration, open **`docs/offline-pay.html`** directly in your
+browser. No Node installation, API key, wallet connection, server or network
+request is needed. Click **Pay** to evaluate six synthetic scenarios with editable
+weights, contribution scores and allow/hold/deny decisions. This is not a real
+payment. See [private Mac preview instructions](docs/OFFLINE_PREVIEW.md).
+
+The backend setup below describes the older development application. Do not run
+it on the restricted company computer: localhost does not guarantee that its
+backend will avoid external services. Live payment is not complete.
+
 Work in progress: a buyer-side pre-signing safety gate for an x402 **Contract Insights** purchase. The seller analyzes a bundled Solidity sample using lexical counts, not a security audit. This is not production custody or a complete security guarantee.
 
 ## What you can demonstrate today
