@@ -256,3 +256,40 @@ Final web12 manifest /private/tmp/contract-report-web-manifest.txt digest728297d
 报告商品呈现slice独立Astra/xhigh Review PASS，无高置信P0/P1/P2；web12 manifest728297d071588b4badc949d784f476b19dcf88822b5dbaa1d1e0483506855112前后全部匹配，buyer/shared19文件未变。Reviewer独立源码/typecheck/5图审阅；作者12组视觉导航/build证据分开。交02局部QA，非付费交付/风险图/真付款完成。
 
 02转报告商品呈现QA PASS：web12 manifest728297d0前后全部match；真实首页Sample报告卡且无首页图，Preview无Get quote且4/2/1正确，View offer返回；390两页无横溢、console为空。报告docs/qa-report-offer.md，ETH27评论d61f4a51-c1a9-4ba3-9650-c5f87758b667。仅本呈现slice通过，风险分析功能未完成，非付款/购买报告交付。B只记录，未改源码或重跑；02向用户交付。
+
+## ETH46 Scenario demo — 2026-09-26
+
+02 authorized an independent, operable local illustration of delegated work: Build an event landing page → compare3 example icon sellers → transparent rule matching → local review → integration/purchase remain incomplete → bundled sample draft. ExistingServices/Request, fixed-seller backend and original request identity are preserved. New cardETH46v3 in_progress, parentETH25, full B thread/project/host/workspace binding after duplicate search. No reuse ofETH43 risk card.
+
+B sole writer: newScenarioDemo.tsx, scenario-demo.ts, scenario-demo.css, scenario-demo.test.ts, scripts/verify-scenario.ts; main.tsx adds only nav/view/import and context labels/footer. Three explicitly fictional sellers with demo-credit prices; freeSVG seller can fully match a solid-style brief, demonstrating free is not inherently worse. PNG seller does not match editableSVG unless user removes that requirement. All license claims seller-stated/unverified;4/4 means stated conditions match, never a legal license verification. Rule recommendation requires all four conditions and uses lower demo price only as a tie breaker; no live search/LLM call. Changing brief/selection resets reviewed. LocalReview does not call backend or enable payment; integrationNot connected/purchaseNot completed/licenseUnverified remain. Preview draft uses bundled original inlineSVG samples, varies icon style and clearly saysNot purchased/not a seller download. Event invitation is sample visual content, not a working signup service.
+
+02 actually opened candidate and previewedoutline draft, reported visible to user, not finalQA. Requested unit clarification applied: scenario sidebar/footerDemo credits, real service view retainsTestnet/Test tokens. No addeddependencies/backend/shared edits/arbitraryURLs/scan/signature/payment/runtime94503 changes. Git baseline7877fe4 unchanged; no commit/push.
+
+Author5 pure-rule tests, typecheck/build PASS. Final12-group isolatedChrome check PASS:3example sellers/localreview/free fullmatch/style-format-budget/reset/draftchanges/sample-notpurchased/scenario0API/390-320nooverflow/originalrequestIDretained/0scan-payment/errorsnone. Fixture creates one original service request then switches scenario and back; no external request. Two initial failures corrected: explicit accessible names added to selects; assertion now targets listitem containing state glyph, not exactrawtext. Screenshot scroll reset removed full-page fixed-position capture artifact; test passed after reset. Screenshots/private/tmp/scenario-desktop.png, scenario-390.png, scenario-320.png. No170/backend suite or prior fullUI rerun.
+
+Final web17 /private/tmp/scenario-web-manifest.txt digest24e82625313662dd76045568b02168bf586f1a3de8166ee19d4eeecf758f013f stopped pending original reviewer final receipt. Reviewer already independently5rules/typecheck PASS and confirmed buyer/shared19/19 unchanged, scenario has noAPI/storage/network entry. Generic seller integration, actualAIselection, real catalog, purchase/delivery/license validity and completedcommission are not delivered by this scenario.
+
+ETH46 independent review PASS: verified gpt-6-astra/xhigh; no high-confidence P0/P1/P2. Reviewer independently ran 5 rule tests and final typecheck, read the browser script and desktop/390/320 screenshots. Author 12 isolated interaction checks and build PASS are separate evidence. Final web17 manifest 24e82625313662dd76045568b02168bf586f1a3de8166ee19d4eeecf758f013f matched twice after freeze. Buyer/shared19 unchanged. Ready for02 QA; local scenario only, not actual AI, seller integration, license verification, purchase or user acceptance.
+
+Scenario final web17 manifest:
+```text
+3ac94023e32025b93140f6267427b3c38fa9cda50059f773d10bb1bb06bde865  apps/web/index.html
+b82f2855b79c11ca9533669d6eeac797051d85ce217ad16b67facdc8d15d58ae  apps/web/scripts/verify-chart.ts
+79e00afcd6dfaf1dfd44056036405f217f3e02bcd2747c8f6ae91a184a57c246  apps/web/scripts/verify-scenario.ts
+37f911d8b0e4a80050daaecbf81b154208fa8fea1d6cfa2ebb481e3b823df11f  apps/web/scripts/verify-ui.ts
+079f697e92d8797ac680cb108cb2410b1fef5f173cd92824c97110e65ddcd8c3  apps/web/src/SamplePreview.tsx
+7beffb500e4a2e2de5c8f2347f73ae43d84ca385d33be9db687b5ebc3833edb4  apps/web/src/ScenarioDemo.tsx
+98578e0afe7f43395b650c0f76cbadbefaec19bb834127e84751c1153de50368  apps/web/src/api.test.ts
+5fa2f5351eebb4ddff4194187be5f9e6c786037b61a6329511fa667f2a06be15  apps/web/src/api.ts
+65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5  apps/web/src/env.d.ts
+aaa05278d2496b2eedb600a124fd5d8dc15440fb4b5f2a400bfab0e6b4618298  apps/web/src/main.tsx
+0089d1a65ac3df480f7ec68e5e43b8f1efe3f11a9161aa62e440f64cc2307ec8  apps/web/src/public-sample.json
+18bdc24baa660aab0f87a7c75d32aef0611160a1554bfa0ae6501ddddaf47fe9  apps/web/src/sample-report.ts
+0181464af8b9cd72904c2b13d8038c2b26ce53486ec3804c5d8394288fef8c14  apps/web/src/scenario-demo.css
+919401de2e4cd465b1e5aaf55a8646c04e1a3ca714bc33c567a0cbb8e1823df6  apps/web/src/scenario-demo.test.ts
+2def7687497f853db331129539c5163bae1c7586fad8ab7e94f92c9be8360af0  apps/web/src/scenario-demo.ts
+426a7f649cead4cc3008727a3bdc1613d8fdce027c51ab6b16539175f3b78cf9  apps/web/src/style.css
+c6aba0302172e9fba40c582f5b04d5a0da43db5949d9fea5e9e91960828ce357  apps/web/vite.config.ts
+```
+
+02 received docs/qa-scenario-demo.md: QA PASS, no blockers; web17 manifest24e82625313662dd76045568b02168bf586f1a3de8166ee19d4eeecf758f013f matched17/17 before and after. Actual default flow, free solid option with zero budget, review reset after changes, duotone/SVG mismatch,390px and empty console passed. QA no-API conclusion is based on source review; author browser network assertions are separate evidence. No real AI, seller integration, verified license or payment claimed. ETH43 risk-analysis chart remains a separate unfinished item. B only records this receipt; no source edits or reruns. All B source and document writes are now paused for M local delta commit; sole Scenario author session01a0d923-90e3-7801-a43e-c4b00c829de6.
