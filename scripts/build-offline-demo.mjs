@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const entry = new URL('../apps/web/src/demo-main.tsx', import.meta.url);
-const cssPath = new URL('../apps/web/src/pay-assessment.css', import.meta.url);
+const cssPaths = ['pay-assessment.css', 'policy-preview-panel.css', 'policy-preview-shell.css']
+  .map(name => new URL(`../apps/web/src/${name}`, import.meta.url));
 const outputPath = new URL('../docs/offline-pay.html', import.meta.url);
 
 const bundled = await build({
@@ -14,7 +15,7 @@ const bundled = await build({
 });
 const script = bundled.outputFiles.find(file => file.path.endsWith('.js'))?.text ?? bundled.outputFiles[0]?.text;
 if (!script) throw new Error('Offline demo JavaScript bundle was not generated.');
-const css = await readFile(cssPath, 'utf8');
+const css = (await Promise.all(cssPaths.map(path => readFile(path, 'utf8')))).join('\n');
 const html = `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'">

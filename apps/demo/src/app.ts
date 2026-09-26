@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { assessDemoPayment, isDemoAssessmentInput, result } from '../../../shared/demo-assessment.ts';
 
 import { DemoRequestStore, isDemoRequestInput, isRequestId, RequestError } from '../../../shared/demo-requests.ts';
+import { evaluatePolicyPreview, isPolicyPreviewInput, POLICY_PREVIEW_CASES } from '../../../shared/policy-preview.ts';
 
 const defaultHtmlPath = fileURLToPath(new URL('../../../docs/offline-pay.html', import.meta.url));
 
@@ -37,6 +38,23 @@ export function createDemoApp(options: { html?: string; requests?: DemoRequestSt
     }
     const assessment = assessDemoPayment(request.body);
     response.status(assessment.decision === 'invalid' ? 400 : 200).json(assessment);
+  });
+
+  app.get('/api/demo/policy-preview/cases', (_request, response) => {
+    response.json({ simulation: true, paymentEnabled: false, cases: POLICY_PREVIEW_CASES });
+  });
+
+  app.post('/api/demo/policy-preview', (request, response) => {
+    if (!isPolicyPreviewInput(request.body)) {
+      response.status(400).json({ simulation: true, paymentEnabled: false, code: 'INVALID_POLICY_PREVIEW_INPUT', error: '只接受服务端目录中的 caseId 与正原子任务额度。' });
+      return;
+    }
+    const preview = evaluatePolicyPreview(request.body);
+    if (!preview) {
+      response.status(400).json({ simulation: true, paymentEnabled: false, code: 'UNKNOWN_SYNTHETIC_CASE', error: '未知合成样例；未执行任何动作。' });
+      return;
+    }
+    response.json(preview);
   });
 
   app.post('/api/demo/requests', (request, response) => {

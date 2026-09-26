@@ -1,76 +1,44 @@
 # Intercepta payment gate — local demo
 
-## Current preview: offline Pay + weighted assessment
+## Current Demo: address assessment and task permission
 
-For the current demonstration, double-click **`docs/offline-pay.html`**. The new
-Chinese page is one responsive view with three regions: wallet and task limit,
-order and grouped synthetic recipients, then decision and plain-language reason.
-It needs no API key, wallet connection, server or network request. All six
-recipient addresses and all evidence are visibly synthetic. **Demo allow does not
-mean signed, submitted, paid, or report purchased.** See [private Mac preview
-instructions](docs/OFFLINE_PREVIEW.md).
+This Demo is the same payment-related project, but the current second-computer
+acceptance path supports address assessment and saving an application task permission. It is not a wallet,
+payment, report purchase or security guarantee. The page is served only on
+`127.0.0.1:47915` and must be used on a personal computer.
 
-To rebuild the single-file page from the React source, run `npm run demo:build`.
-An optional local-only simulation endpoint can be started with `npm run demo:serve`;
-it binds to `127.0.0.1`, serves only the generated page and
-`POST /api/demo/assess`, and still cannot pay. The file version never fetches.
-Both modes use the same `weighted-demo-v1` pure assessment function.
+On the private Mac, follow [second-computer startup and acceptance](docs/SECOND_COMPUTER.md):
 
-The Step 3 preview also shows a simulated request ID, checking/completed/unconfirmed
-states, original-request lookup and explicit simulation reset. Expand the scenario
-selector to try normal, delayed or unconfirmed results. Repeated submission of the
-same request does not repeat its assessment; changed content with the same ID is rejected.
-Refresh attempts to restore the last local record. Missing server records stay unconfirmed,
-without automatic resubmission. This is single-browser demo recovery, not real-payment
-idempotency or cross-tab locking; server records are in memory (maximum 128).
+The coordinator-provided unified commands are:
 
-Provider-shaped evidence examples are synthetic and separate from the weighted score.
-Real schema/coverage/semantics remain unverified. See
-[private Mac risk-check checklist](docs/PRIVATE_MAC_RISK_CHECK.md); **do not run that
-network check on the restricted company computer**. Local checks:
-`npm run demo:test`, `npm run demo:test:step3`, `npm run typecheck`.
+```sh
+npm run demo:prepare   # local page build; no risk request
+npm run demo:check     # offline preflight; no network or service
+npm run demo:live      # same Demo on the personal Mac, after quota/key checks
+```
 
-The backend setup below describes the older development application. Do not run
-it on the restricted company computer: localhost does not guarantee that its
-backend will avoid external services. Live payment is not complete.
+`demo:check` passing proves only local preparation. It does not prove provider
+availability, response semantics, balance, signing or payment. A real risk API
+response is evidence from one authorized manual request; local tests and
+synthetic data are not API evidence. The page always keeps the project decision
+at HOLD when coverage or field meaning is unconfirmed.
 
-Work in progress: a buyer-side pre-signing safety gate for an x402 **Contract Insights** purchase. The seller analyzes a bundled Solidity sample using lexical counts, not a security audit. This is not production custody or a complete security guarantee.
+The old `private:risk` name remains an internal compatibility alias. The company
+offline experiment does not make real risk requests. Do not run `npm run dev` or
+`npm run setup:local` for this acceptance path.
 
-## What you can demonstrate today
-
-The default **Intercepta payment check** screen is an explicitly labelled offline illustration. Its Check risk button does not call the API or pay: synthetic presets display Block / Pause / Continue, and Continue is not a real authorization. Existing request only displays a previously loaded response. For the existing live non-payment flow below, open **Details → Report offer**; the separate Scenario is an archived fictional example.
-
-1. Open the English purchase page and inspect the bundled contract sample.
-2. Get a real HTTP 402 quote from the local seller for **0.001 test USDC**.
-3. Explicitly request an Intercepta address check using your locally configured key.
-4. See scan facts and a **held payment**, with no signature or settlement.
-
-Real API transport has been verified. A zero score does not establish safe payment or testnet coverage. **Successful payment, a proven malicious-address block, and a third-party Agent integration are not completed in this release.** Offline signing tests are not evidence of a live payment. The existing HTTP API is not an integrated AI agent.
-
-See the [English architecture](docs/architecture.html) and [second-computer setup](docs/SECOND_COMPUTER.md). Download the HTML and open it locally; GitHub does not execute HTML in repository previews.
+The full project remains a work in progress. It is not production custody, a
+complete security audit, an autonomous Agent or a completed payment flow.
 
 ![Current runtime architecture — planned components are explicitly labelled](docs/architecture.visual-check.2048x1320.light.png)
 
-## Start
+## Local checks
 
-Use the Node version in `.nvmrc`, then `npm ci`, `npm run doctor`, `npm run dev`. Open `http://127.0.0.1:5178`. Node 22.12–26 is allowed; initial development used 26.6.0. Both backends and the web page run locally. Do not expose them publicly.
-
-Run `npm run setup:local` once to create an empty isolated merchant wallet locally and populate only its public address. This lets the seller quote a price without configuring a buyer signer or enabling payments. Its secret stays in ignored `.runtime/`; this is not a wallet backup or a production wallet. The command refuses to overwrite an existing `.env` or key.
-
-Alternatively, copy `.env.example` to `.env` locally and fill only personal test credentials. Missing credentials must pause payment. Never commit `.env`. `ENABLE_TESTNET_PAYMENTS` defaults false. No code path may bypass a missing Intercepta check. Do not use a wallet holding real funds.
-
-## Checks
-
-`npm run typecheck` · `npm test` · `npm run build`
-
-This slice demonstrates HTTP 402 and an explicit real address scan when a valid key is configured. Unknown scan semantics or network coverage hold the payment. The runtime deliberately keeps payments disabled even if the environment flag is changed. Application AI is not configured; manual requests must not be presented as autonomous Agent purchases.
-
-See [execution handoff](docs/HANDOFF.md) and [working log](docs/WORKING_LOG.md). Seller code belongs in `apps/seller`, buyer service in `apps/buyer`, and UI in `apps/web`.
+Task permission persistence, UI and transport have offline tests. Run `npm run typecheck` and the scoped tests recorded in the handoff. Distinguish these checks from a manual provider request and from payment evidence. Saving a permission does not start the task or connect it to a signer. Spent, reserved, available budget and wallet balance remain unknown until their real sources are connected.
 
 ## Sources and limits
 
 - [x402 Foundation](https://github.com/x402-foundation/x402): SDK and official examples; prior learning sample remains separate from this new project.
-- [Intercepta prize requirements](https://ethglobal.com/events/tokyo2026/prizes/intercepta): real pre-sign/accept API call, visible successful/blocked payment, public repository and API feedback. This project is not published yet.
-- [Quick Scan Address](https://docs.web3antivirus.io/reference/quick-scan-address): address risk only, not complete authorization or token validation. Risk data is mainnet; payments can use testnet. Any correspondence must be stated honestly.
+- [Quick Scan Address](https://docs.web3antivirus.io/reference/quick-scan-address): address risk only, not complete authorization or token validation. Any correspondence must be stated honestly.
 
-Before a complete payment demonstration: implement and verify the guarded signing/settlement path, a justified risk decision, a real test-payment receipt, and a third-party Agent client. Before submission: confirm prize requirements, API feedback, independent review of the final revision, and a second-computer run. Do not replace missing evidence with simulated receipts.
+Do not replace missing provider or payment evidence with local tests or simulated receipts.

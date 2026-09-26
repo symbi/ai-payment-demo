@@ -16,7 +16,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --maxWorkers=2",
     "build": "vite build --config apps/web/vite.config.ts",
-    "demo:test:step3": "vitest run shared/demo-requests.test.ts shared/demo-risk-evidence.test.ts apps/buyer/src/intercepta-response.test.ts apps/buyer/src/intercepta.test.ts apps/web/src/api.test.ts apps/web/src/DemoRiskEvidence.test.tsx tests/symphony-step3/state tests/symphony-step3/risk --maxWorkers=1"
+    "demo:test:step3": "vitest run shared/demo-requests.test.ts shared/demo-risk-evidence.test.ts apps/buyer/src/intercepta-response.test.ts apps/buyer/src/intercepta.test.ts apps/web/src/api.test.ts apps/web/src/DemoRiskEvidence.test.tsx tests/symphony-step3/state tests/symphony-step3/risk --maxWorkers=1",
+    "private:risk:build": "node scripts/build-private-risk.mjs",
+    "private:risk": "node --env-file-if-exists=.env --import tsx apps/private-risk/src/index.ts",
+    "demo:prepare": "npm run private:risk:build",
+    "demo:check": "node --env-file-if-exists=.env scripts/check-demo.mjs",
+    "demo:live": "npm run private:risk"
   },
   "dependencies": {
     "@x402/core": "2.27.0",

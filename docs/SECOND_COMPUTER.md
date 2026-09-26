@@ -1,46 +1,90 @@
-# Run on a second personal computer
+# 另一台私人 Mac：启动自检与人工验收
 
-## Requirements
+本说明只适用于已交付的私人电脑版本。它启动的是同一个付款 Demo：查看地址风险、保存任务许可和预算。当前尚未接通签名和付款；私人电脑只是运行环境，不是另一套产品。不要在公司电脑启动真实接口入口。
 
-- A personal computer, Git and Node.js (use `.nvmrc`: 26.6.0; supported range is >=22.12 and <27).
-- Access to the private repository once its owner and upload are confirmed.
-- Your own Intercepta key for the optional live scan. Never put it in Git, screenshots or chat.
-- No Docker, cloud deployment or funded wallet is required for the current held-payment demonstration.
+## 先确认边界
 
-## Fresh installation
+- 仅使用 Node 22.12–26；不需要安装 Symphony。
+- 不运行 `npm run dev`、`npm run setup:local`，也不复制另一台电脑的 `.env`、`.runtime` 或密钥。
+- `npm run demo:prepare` 只构建本地页面，不调用风险服务。
+- `npm run demo:check` 只做无网络准备检查：不会 `fetch`、监听端口或启动子进程。Node 会载入本机 `.env`，自检脚本仅判断 key 是否存在，不打印值，不读取钱包密钥，也不覆盖状态文件。
+- `npm run demo:live` 才会启动 `127.0.0.1:47915` 的同一 Demo 页面；它需要操作者先核实免费额度和本轮已有请求数。
 
-Clone the confirmed repository and open a terminal in its project folder. Then run:
+## 启动顺序
+
+本轮交付分支为 `demo/permission-and-risk-v1`，不要求切换或覆盖正在工作的目录。已有仓库可先获取分支，然后建立独立试跑目录（目录名如已存在，换一个新名称）：
+
+```sh
+git fetch origin demo/permission-and-risk-v1
+git worktree add --detach ../ai-payment-demo-tryout origin/demo/permission-and-risk-v1
+cd ../ai-payment-demo-tryout
+git rev-parse HEAD
+```
+
+使用新目录前必须核对本轮此前的 API 调用记录；换目录不会获得新的扫描额度。不要复制 `.env` 或扫描记录来绕过次数检查。若旧目录已有本轮调用，先保留旧记录并停止真实扫描，回报实际次数。
+
+在项目根目录执行主控提供的统一命令：
 
 ```sh
 npm ci
-npm run setup:local
-npm run doctor
-npm run dev
+npm run demo:prepare
+npm run demo:check
 ```
 
-Open http://127.0.0.1:5178 . The launcher starts the buyer backend on 4031 and the seller on 4032 as separate local programs. If a port is occupied, stop the old instance you own; do not kill unrelated services. Stop this launcher with Ctrl+C.
+`demo:check` 通过只表示本机已具备启动前提，不表示风险供应商可用、地址有余额、返回字段含义已确认或付款成功。地址预算配置显示 `pending` 不会阻止地址评估本身。
 
-`setup:local` creates a new empty merchant wallet and `.env`; it refuses to overwrite existing local configuration. Do not copy the development computer's `.env` or `.runtime` into the repository. Keep the generated merchant wallet empty and never use real funds.
-
-To enable only the address scan, edit the local `.env` and set `INTERCEPTA_API_KEY` to your own key. Keep `BUYER_PRIVATE_KEY` empty and `ENABLE_TESTNET_PAYMENTS=false`. Restart your local launcher after changing configuration. Never share the key in a screen recording.
-
-## Expected demonstration
-
-The default single-screen check is **Offline example · Synthetic evidence**. Its Check risk button changes display state only, without a new scan or payment. Continue is a synthetic illustration, not permission to sign. Use **Details → Report offer** to reach the real non-payment flow described below; Existing request stays empty until a request has been loaded in this session.
-
-1. Open Contract Insights: the bundled sample's structure is visible, not an arbitrary smart-contract audit.
-2. Request a quote: the seller returns HTTP 402 and the page shows 0.001 test USDC.
-3. Explicitly click the risk-check control: this may consume an API request; it is not triggered by installing or simply opening the page.
-4. Inspect scan results: the current flow remains held, signing and settlement stay at zero.
-
-Without a key or if the provider is unavailable, expect a held/unavailable result, not a successful live scan. A successful scan is not a successful payment. Third-party Agents and completed payments remain pending.
-
-## Local checks
+若自检失败，停止并记录失败字段；不要为了让它通过而填入虚假 key、地址或请求次数。只有私人操作者能在本机环境中设置以下公开控制项；API key 不进入聊天、日志、截图或 Git：
 
 ```sh
-npm run typecheck
-npm test
-npm run build
+export PRIVATE_RISK_MACHINE=personal
+export PRIVATE_RISK_FREE_QUOTA_CONFIRMED=true
+export PRIVATE_RISK_PRIOR_REQUESTS=0
 ```
 
-These checks do not replace a human run on the second computer. Record the commit, Node version, visible result and any error without credentials. The local buyer keeps request history in memory; restarting clears it. Keep all three services on loopback; public hosting and remote Agent access need separate authentication/security work.
+使用本地编辑器把 API key 配置在已忽略的 `.env`，不要把值粘贴到命令、聊天或日志。任务许可另需公开的 `BUYER_ADDRESS` 和 `SELLER_PAY_TO`；只保存配置不证明已经连接钱包或控制该地址。未配置时仍可评估地址，但不能保存任务许可。
+
+再次执行 `npm run demo:check` 后，才可按授权启动：
+
+```sh
+npm run demo:live
+```
+
+浏览器打开 `http://127.0.0.1:47915/`。页面启动后先点“查询已有结果（不重新扫描）”，确认已有记录和本轮用量；不要删除或替换扫描记录来重置次数。
+
+## 无网络自检和真实 API 的区别
+
+| 项目 | 无网络自检 | 真实 API/人工验收 |
+| --- | --- | --- |
+| 目的 | 检查 Node、依赖解析、页面文件和公开环境标记 | 在已授权前提下观察一次实际供应商请求和页面结果 |
+| 网络 | 必须不发请求 | 仅手动点击扫描按钮时最多发起一次；失败也计数 |
+| 结果 | `local-preparation-only`，不是风险结果 | 供应商实际返回或“未取得有效证据” |
+| 付款 | 不签名、不付款 | 本入口仍不签名、不付款；HOLD 不是付款授权 |
+| 可证明内容 | 本地启动前提是否齐全 | 本次请求的脱敏字段、实际次数和未知项 |
+
+真实返回仍需保守解释：原始 `toxicScore` 不换算成百分制，0 不等于安全；网络覆盖、字段语义和更新时间未知时保持 HOLD。打开页面、切换地址、查看已有记录不会调用风险服务；只有手动扫描按钮会消耗一次共同额度。GH-9、旧 CLI 与本页面共用本轮最多 3 次，每个候选最多一次，不并行、不重试。
+
+## 人工验收顺序
+
+1. 记录代码 commit、Node 版本和启动模式（地址评估与任务许可）。
+2. 确认页面地址为 `127.0.0.1:47915`，并确认页面提示“不签名、不付款”。
+3. 先查询已有结果；记录本轮用量和是否存在 pending。pending、损坏记录或锁占用时停止。
+4. 如付款账户和卖方已配置，填写任务预算、勾选确认并保存；刷新或重启后查询同一个许可。不能改账或借此启动付款，余额/账本应显示未接入。
+5. 选择一个获授权候选；选择动作不扫描。确认免费额度、本轮此前请求数为 0 后，手动点击一次“扫描这个真实地址”。
+6. 记录实际请求次数、成功/失败、原始字段的脱敏结果、页面决定及理由；不把候选线索当成安全结论。
+7. 看到错误时记录页面错误文本和状态，不重试、不删除 journal、不改用 CLI。
+8. 停止服务；回传前检查内容不含 key、自由文本密钥、完整 secret 或私有配置。
+
+## 回传清单
+
+```text
+commit / Node：
+启动模式：地址评估与任务许可；执行未接通
+本轮手动扫描次数（含失败）：
+候选与网络（可公开部分）：
+原始字段（脱敏）：toxicScore / traitsCount / traitLabels 类型与数量
+页面决定及原因：通常为 HOLD（依据不足）
+错误或未确认项：
+付款证据：无（本入口不付款）
+```
+
+没有真实 API 响应、签名或付款证据时，不要写“已验证真实 API”或“已完成付款”。真实资金动作须等付款路径接通并获得单独授权。
