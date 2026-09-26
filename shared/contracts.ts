@@ -26,12 +26,48 @@ export interface RiskResult {
   };
 }
 export interface FlowEvent { at: string; step: string; message: string }
+/** Public execution facts only. These types do not authorize or execute a payment. */
+export interface PaymentEvidenceSummary {
+  source: EvidenceSource;
+  evidenceId: string | null;
+  address: string | null;
+  checkedAt: string | null;
+  requestedPaymentNetwork: string;
+  providerEvidenceNetwork: string | null;
+  /** Same address on two networks is not proof of coverage. */
+  coverage: 'verified' | 'unverified' | 'mismatch';
+  semantics: 'verified' | 'unverified';
+}
+export interface PaymentExecutionFacts {
+  operationId: string;
+  /** A policy decision, not proof of signing, settlement, or delivery. */
+  decision: Decision;
+  reasonCodes: string[];
+  reasons: string[];
+  evidence: PaymentEvidenceSummary;
+  checkedQuoteHash: string | null;
+  /** Digest only; never expose executable signatures or wallet secrets. */
+  signingInputHash: string | null;
+  signing: 'not_signed' | 'signed' | 'unknown';
+  submission: 'not_submitted' | 'submitted' | 'unknown';
+  /** Failure must be established; a timeout or HTTP 402 alone means unknown. */
+  settlement: 'not_settled' | 'settled' | 'failed' | 'unknown';
+  /** This slice never automatically creates a new payment authorization on retry. */
+  retryAllowed: false;
+}
+/** Completion also requires validated delivery; settled alone is insufficient. */
+export type ProtectedPaymentOutcome = PaymentExecutionFacts & (
+  | { taskComplete: false }
+  | { taskComplete: true; settlement: 'settled' }
+);
 export type PurchaseStatus = 'quoted' | 'denied' | 'held' | 'paid' | 'settlement_unknown' | 'error';
 export interface PurchaseResult {
   requestId: string; status: PurchaseStatus; decision: Decision; reasons: string[];
   terms?: PaymentTerms; risk?: RiskResult; data?: unknown; transaction?: string;
   events: FlowEvent[]; counters: { sign: number; settle: number };
   paymentEnabled: boolean; aiMode: 'not_configured' | 'live';
+  /** Absent on legacy responses: execution is unreported, NOT proven unsigned/unpaid. */
+  execution?: ProtectedPaymentOutcome;
 }
 export interface WeatherData {
   source: 'demo-fixture'; city: 'Tokyo'; weather: string; temperatureC: number;
