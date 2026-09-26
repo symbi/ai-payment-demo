@@ -24,3 +24,11 @@
 - 本QA未开启网络监听/抓包；不能独立宣称测得0条扫描网络请求。无扫描副作用结论依据操作限定、本地处理源码及既有隔离测试，浏览器直接证据仅页面状态/控制台。没有读取.env/秘密、签名/付款、共享runtime操作或后台全套重跑。
 
 报告已保存后停止全部项目文件写入，无在途写命令；QA未改产品源码。结果供02交付，历史完成度/最终依赖/用户接受不由本报告改变。实际模型/深度未独立核实，未主动切换。
+
+## U1 文案增量局部QA（2026-09-26）
+
+PASS，仅此次文案/折叠入口，无阻断发现。web22 `/private/tmp/intercepta-u1-copy-web-manifest.txt` SHA256 `ddba1eb20f0eb6712e95e8205630e8eedeb04a6f7c37742d108fe1c3fd766e97`，前后22/22匹配且清单摘要相同。旧1be2dce2记录保留其版本边界。
+
+独立Chrome39154940访问真实5178默认页：Demo examples默认折叠，Recipient短地址可见，Offline example · Synthetic evidence持续显示，按钮Preview check，邻近Offline example · No API call；初始Not checked。只点击一次Preview check后显示Block及Decision only · No payment，签名Not signed/付款Not paid。展开Demo examples后可见Risk detected/Check unavailable/Policy permits/Existing request。390×844主屏文字/地址/决定可读、innerWidth=scrollWidth=390，console warn/error为空；截图在QA对话，未另存文件，视口已恢复。
+
+独立读取PaymentCheck.tsx确认按钮仍仅setReviewed；没有真实scan/pay操作。没有抓包，不能宣称独立实测零网络请求；初始health与离线按钮无扫描需区分。作者14隔离交互/build、reviewer独立typecheck/diff/截图由02交接复用，未重跑整轮或后台套件。没有更改产品/共享服务，未更新挑战完成度。供02接收。

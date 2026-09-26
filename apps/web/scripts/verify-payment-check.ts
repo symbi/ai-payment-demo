@@ -18,27 +18,31 @@ try {
  await page.goto(origin);await expect(page.getByRole('heading',{name:'Intercepta',exact:true})).toBeVisible();
  await expect(page.getByRole('navigation')).toHaveCount(0);await expect(page.locator('.check-source').getByText('Offline example · Synthetic evidence',{exact:true})).toBeVisible();
  await expect(page.getByRole('heading',{name:'Not checked',exact:true})).toBeVisible();
+ await expect(page.getByLabel('Evidence view')).not.toBeVisible();
+ await expect(page.locator('.recipient-line')).toContainText('Recipient');
+ await page.getByRole('button',{name:'Preview check'}).click();await expect(page.getByRole('heading',{name:'Block',exact:true})).toBeVisible();
+ const choose=async(value:string)=>{await page.locator('.demo-examples').evaluate(e=>{(e as HTMLDetailsElement).open=true;});await page.getByLabel('Evidence view').selectOption(value);await page.locator('.demo-examples>summary').click();};
  const start=calls.length;
  for(const [value,decision] of [['block','Block'],['pause','Pause'],['continue','Continue']]){
- await page.getByLabel('Evidence view').selectOption(value);await expect(page.getByRole('heading',{name:'Not checked',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Check risk'}).click();await expect(page.getByRole('heading',{name:decision,exact:true})).toBeVisible();
+ await choose(value);await expect(page.getByRole('heading',{name:'Not checked',exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Preview check'}).click();await expect(page.getByRole('heading',{name:decision,exact:true})).toBeVisible();
  await expect(page.getByText('Decision only · No payment',{exact:true})).toBeVisible();
  }
  assert.equal(calls.length,start,'offline switches/checks must make zero API requests');
  for(const width of [1440,390,320]){await page.setViewportSize({width,height:950});assert.equal(await page.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),true);await page.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await page.screenshot({path:`/private/tmp/intercepta-simple-${width}.png`,fullPage:true});}
- await page.getByLabel('Evidence view').selectOption('current');await expect(page.getByRole('button',{name:'Check risk'})).toBeDisabled();
+ await choose('current');await expect(page.getByRole('button',{name:'Check risk'})).toBeDisabled();
  await page.locator('.payment-details>summary').click();await page.getByRole('button',{name:'Report offer',exact:true}).click();await page.getByRole('button',{name:'Get quote'}).click();
  await expect(page.getByRole('heading',{name:'Scan received',exact:true})).toBeVisible();
- await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await page.getByLabel('Evidence view').selectOption('current');
+ await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await choose('current');
  const before=calls.length;await page.getByRole('button',{name:'Check risk'}).click();await expect(page.getByRole('heading',{name:'Pause',exact:true})).toBeVisible();
  await expect(page.locator('.check-source').getByText('Current request · Live provider response',{exact:true})).toBeVisible();
  await page.locator('.payment-details>summary').click();await expect(page.locator('.payment-details').getByText('0 · uninterpreted',{exact:true})).toBeVisible();assert.equal(calls.length,before);
  await page.getByRole('button',{name:'Saved request',exact:true}).click();failQuery=true;await page.getByRole('button',{name:'Query request'}).click();
  await expect(page.getByRole('heading',{name:'Status unknown',exact:true})).toBeVisible();
- await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await page.getByLabel('Evidence view').selectOption('current');await page.getByRole('button',{name:'Check risk'}).click();
+ await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await choose('current');await page.getByRole('button',{name:'Check risk'}).click();
  await expect(page.getByRole('heading',{name:'Pause',exact:true})).toBeVisible();await expect(page.locator('.payment-status')).toContainText('Unconfirmed');
- huge=true;await page.reload();await page.locator('.payment-details>summary').click();await page.getByRole('button',{name:'Report offer',exact:true}).click();await page.getByRole('button',{name:'Get quote'}).click();await expect(page.getByRole('heading',{name:'Declined',exact:true})).toBeVisible();await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await page.getByLabel('Evidence view').selectOption('current');await page.getByRole('button',{name:'Check risk'}).click();await expect(page.getByRole('heading',{name:'Block',exact:true})).toBeVisible();
+ huge=true;await page.reload();await page.locator('.payment-details>summary').click();await page.getByRole('button',{name:'Report offer',exact:true}).click();await page.getByRole('button',{name:'Get quote'}).click();await expect(page.getByRole('heading',{name:'Declined',exact:true})).toBeVisible();await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await choose('current');await page.getByRole('button',{name:'Check risk'}).click();await expect(page.getByRole('heading',{name:'Block',exact:true})).toBeVisible();
  for(const width of [390,320]){await page.setViewportSize({width,height:950});assert.equal(await page.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),true,'long current quote must not overflow');assert.equal(await page.locator('.single-payment-card').evaluate(e=>e.scrollWidth<=e.clientWidth),true);}
  assert.equal(calls.filter(p=>p==='/api/pay').length,0);assert.equal(calls.filter(p=>p==='/api/inspect').length,2);assert.deepEqual(errors,[]);
- console.log(JSON.stringify({result:'PASS',checks:['single order/action/no primary nav','offline provenance persists','switch resets checked state','continue/block/pause examples','no API on display switches/check','empty real mode disabled','actual quote/zero-score stays paused','unknown request remains paused/unconfirmed','original request preserved','1440/390/320 no overflow','no pay/provider calls','78-digit denied amount and 128-char invalid recipient wrap', 'no runtime errors'],evidence:'isolated fixtures only'}));
+ console.log(JSON.stringify({result:'PASS',checks:['collapsed scenarios/default preview/recipient label','single order/action/no primary nav','offline provenance persists','switch resets checked state','continue/block/pause examples','no API on display switches/check','empty real mode disabled','actual quote/zero-score stays paused','unknown request remains paused/unconfirmed','original request preserved','1440/390/320 no overflow','no pay/provider calls','78-digit denied amount and 128-char invalid recipient wrap', 'no runtime errors'],evidence:'isolated fixtures only'}));
 }finally{await browser?.close();await vite.close();}
