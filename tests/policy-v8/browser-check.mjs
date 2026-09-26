@@ -111,6 +111,13 @@ try{
  await amount.fill('0.005');await expect(page.locator('.private-risk-policy').getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,1);
  checks.push('empty live evidence allows in policy only; invalid amount removes allow without POST');
  await outcome('H2','ALLOW WITH LIMIT');
+ await expect(page.locator('.private-risk-factors')).toContainText('mixer_transfers');
+ await expect(page.locator('.private-risk-quality')).toContainText('Complete saved evidence');
+ await expect(page.locator('.private-risk-raw-signal')).toContainText('not used as a threshold');
+ const scoreSize=await page.locator('.private-risk-raw-signal strong').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+ const decisionSize=await page.locator('.private-risk-decision').evaluate(el=>parseFloat(getComputedStyle(el).fontSize));
+ assert.ok(scoreSize<decisionSize,'raw score must not dominate the decision');
+ await expect(page.locator('.private-risk-policy')).toContainText('Exceeds policy cap — amount unchanged');
  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Saved simulated assessment');
  await expect(page.locator('.private-risk-saved-assessment')).toContainText('No rescan required');
  await expect(page.getByText(/0\.001/).first()).toBeVisible();
@@ -127,6 +134,7 @@ try{
  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Saved assessment unavailable');
  await expect(page.locator('.private-risk-saved-assessment')).not.toContainText('saved live');
  await outcome('L1','HOLD');
+ await expect(page.locator('.private-risk-quality')).toContainText('Incomplete');
  checks.push('404 and unknown evidence hold; desktop/mobile no overflow');
  await page.reload();await expect(page.getByRole('heading',{name:'Agent Payment Guard',exact:true})).toBeVisible();
  await expect(page.locator('.private-risk-policy').getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,5);

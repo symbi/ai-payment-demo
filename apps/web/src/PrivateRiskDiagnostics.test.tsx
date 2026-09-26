@@ -49,7 +49,7 @@ it('keeps totals, unknown traits, extra fields and displayed known labels distin
   const html = render({ transport: 'received', httpStatus: 200, diagnosticCode: 'observed', toxicScore: 0,
     traitsCount: 4, unknownTraitsCount: 2, additionalFieldsCount: 3, traitLabels: ['rug_pull', 'blacklist'],
   }, 'live');
-  expect(html).toContain('Evidence</dt><dd>4');
+  expect(html).toContain('Reported trait entries</dt><dd>4');
   expect(html).toContain('Total observed traits</dt><dd>4');
   expect(html).toContain('Unknown trait count</dt><dd>2');
   expect(html).toContain('Ignored additional fields</dt><dd>3');

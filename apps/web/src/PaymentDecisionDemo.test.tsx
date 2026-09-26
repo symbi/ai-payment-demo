@@ -219,7 +219,7 @@ describe('four-step payment decision demo contract', () => {
     const missing = visibleText(renderLivePanel('G2', [unavailable]));
 
     expect(live).toMatch(/Source:? LIVE/);
-    expect(live).toMatch(/Evidence:? 1/);
+    expect(live).toMatch(/Reported trait entries:? 1/);
     expect(live).toContain('mixer_transfers');
     expect(live).toContain('Intercepta Live');
     expect(missing).toMatch(/Awaiting live evidence|Evidence unavailable/);

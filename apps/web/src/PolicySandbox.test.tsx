@@ -40,11 +40,13 @@ function expectResult(card: string, result: policy.LivePaymentPolicyResult) {
 describe('independent Policy Sandbox presentation', () => {
   it('prominently identifies synthetic provenance and disconnected execution', () => {
     const visible = text(render());
-    expect(visible).toContain('Policy Sandbox — Synthetic Scenarios');
+    expect(visible).toContain('Decision Lab · SIMULATED');
     expect(visible).toContain('SIMULATED');
+    expect(visible).toContain('Same score. Different evidence. Different action.');
+    expect(visible).toContain('the raw score is display-only');
     expect(visible).toContain('Synthetic policy scenario');
     expect(visible).toContain('Not a live Intercepta response');
-    expect(visible).toContain('Execution NOT CONNECTED');
+    expect(visible).toContain('Payment execution — NOT CONNECTED');
   });
 
   it('shows the three equal-score inputs and their distinct computed full policy outcomes', () => {
@@ -58,6 +60,11 @@ describe('independent Policy Sandbox presentation', () => {
       expect(card).toMatch(/\b50\b/);
       expect(card).toContain('0.0005');
       expect(card).toContain('USDC');
+      expect(card).toContain('Decision Factors');
+      expect(card).toContain('Evidence Quality');
+      expect(card).toContain('Raw provider signal — not used as a threshold by this policy');
+      expect(card).toContain(index === 2 ? 'Unknown — reported trait is not identified' : 'Complete synthetic labels supplied');
+      expect(card).toContain(`Displayed labels ${index === 2 ? 0 : 1}`);
       expect(card).toMatch(new RegExp(`unknown(?: traits?)?(?: count)?\\s*[:：]?\\s*${index === 2 ? 1 : 0}\\b`, 'i'));
       expectResult(card, oracles[index]!);
     }
@@ -65,6 +72,25 @@ describe('independent Policy Sandbox presentation', () => {
     expect(renderedCards[1]).toContain('sanction_address');
     expect(renderedCards[2]).not.toContain('mixer_transfers');
     expect(renderedCards[2]).not.toContain('sanction_address');
+  });
+
+  it('keeps synthetic display identities attached to scenario ids when display order changes', async () => {
+    const reversed = [...POLICY_SCENARIOS].reverse();
+    vi.resetModules();
+    vi.doMock('../../../shared/policy-scenarios.ts', () => ({ POLICY_SCENARIOS: reversed }));
+    try {
+      const { PolicySandbox: ReorderedLab } = await import('./PolicySandbox.tsx');
+      const html = renderToStaticMarkup(createElement(ReorderedLab));
+      const visibleCards = cards(html);
+      ['SIM-001', 'SIM-002', 'SIM-003'].forEach((id, index) => {
+        expect(visibleCards[index]).toContain(`Synthetic Recipient ID: ${id}`);
+      });
+      expect(text(html)).toContain('SIMULATED');
+      expect(html).not.toContain('0x');
+    } finally {
+      vi.doUnmock('../../../shared/policy-scenarios.ts');
+      vi.resetModules();
+    }
   });
 
   it('evaluates every fixture during each render and displays adapter results, not saved JSX decisions', () => {
@@ -97,7 +123,7 @@ describe('independent Policy Sandbox presentation', () => {
     vi.stubGlobal('localStorage', storage);
     vi.stubGlobal('sessionStorage', storage);
     const html = render();
-    expect(text(html)).toContain('Execution NOT CONNECTED');
+    expect(text(html)).toContain('Payment execution — NOT CONNECTED');
     expect(html).not.toMatch(/<(?:button|input|select|textarea|form|a|iframe)\b/i);
     expect(html).not.toMatch(/\b0x[a-fA-F0-9]{40}\b/);
     expect(html).not.toMatch(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/);
