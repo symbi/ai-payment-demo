@@ -81,11 +81,12 @@ const status = (records: PrivateScanRecord[] = []): PrivateScanStatus => ({
   records,
 });
 
-const renderPanel = (
+const renderLivePanel = (
   selectedId: PrivateCandidateId,
   records: PrivateScanRecord[] = [],
   overrides: Partial<PrivateRiskPanelProps> = {},
-) => renderToStaticMarkup(createElement(PrivateRiskPanel, {
+) => {
+  const html = renderToStaticMarkup(createElement(PrivateRiskPanel, {
   selectedId,
   status: status(records),
   loading: false,
@@ -94,7 +95,12 @@ const renderPanel = (
   onScan() {},
   onRefresh() {},
   ...overrides,
-}));
+  }));
+  // The standalone synthetic section is not evidence for the selected live intent.
+  const sandboxStart = html.indexOf('<section class="policy-sandbox"');
+  expect(sandboxStart).toBeGreaterThan(0);
+  return html.slice(0, sandboxStart);
+};
 
 const visibleText = (html: string) => html
   .replace(/<style[\s\S]*?<\/style>/g, ' ')
@@ -133,7 +139,7 @@ function enabledInteractiveControlLabels(html: string): string[] {
 
 describe('four-step payment decision demo contract', () => {
   it('renders the English four-step flow with the default payment intent', () => {
-    const html = renderPanel('H1');
+    const html = renderLivePanel('H1');
     const text = visibleText(html);
 
     expect(text).toContain('Agent Payment Guard');
@@ -159,7 +165,7 @@ describe('four-step payment decision demo contract', () => {
     ['hard-deny evidence', 'L1', liveSanction50, 'DENY'],
     ['unavailable evidence', 'G2', unavailable, 'HOLD'],
   ] as const)('shows %s as a named project-policy decision with disconnected execution', (_caseName, selectedId, selectedRecord, decision) => {
-    const html = renderPanel(selectedId, [selectedRecord]);
+    const html = renderLivePanel(selectedId, [selectedRecord]);
     const text = visibleText(html);
 
     expect(text).toContain('Project/Intercepta Payment Policy v1');
@@ -177,8 +183,8 @@ describe('four-step payment decision demo contract', () => {
 
   it('keeps identical provider scores as raw evidence while traits drive different actions', () => {
     const records = [liveMixer50, liveSanction50];
-    const mixer = visibleText(renderPanel('G1', records));
-    const sanction = visibleText(renderPanel('L1', records));
+    const mixer = visibleText(renderLivePanel('G1', records));
+    const sanction = visibleText(renderLivePanel('L1', records));
 
     for (const text of [mixer, sanction]) {
       expect(text).toContain('Toxic Score');
@@ -198,8 +204,8 @@ describe('four-step payment decision demo contract', () => {
 
   it('uses only the selected saved record and does not show a stale decision from another candidate', () => {
     const records = [liveEmpty, liveSanction50];
-    const clean = visibleText(renderPanel('H1', records));
-    const denied = visibleText(renderPanel('L1', records));
+    const clean = visibleText(renderLivePanel('H1', records));
+    const denied = visibleText(renderLivePanel('L1', records));
 
     expect(clean).toContain('ALLOW');
     expect(clean).not.toContain('sanction_address');
@@ -209,8 +215,8 @@ describe('four-step payment decision demo contract', () => {
   });
 
   it('shows observed evidence and makes source validity explicit', () => {
-    const live = visibleText(renderPanel('G1', [liveMixer50]));
-    const missing = visibleText(renderPanel('G2', [unavailable]));
+    const live = visibleText(renderLivePanel('G1', [liveMixer50]));
+    const missing = visibleText(renderLivePanel('G2', [unavailable]));
 
     expect(live).toMatch(/Source:? LIVE/);
     expect(live).toMatch(/Evidence:? 1/);
@@ -223,13 +229,13 @@ describe('four-step payment decision demo contract', () => {
   });
 
   it('keeps bounded diagnostics collapsed instead of placing them in the main flow', () => {
-    const html = renderPanel('G2', [unavailable]);
+    const html = renderLivePanel('G2', [unavailable]);
 
     expectCollapsedDetails(html, 'Technical details', ['HTTP status', '404']);
   });
 
   it('labels the preserved v2 receipt as the original scan receipt and keeps export collapsed', () => {
-    const html = renderPanel('H1', [liveEmpty]);
+    const html = renderLivePanel('H1', [liveEmpty]);
 
     expectCollapsedDetails(html, 'Technical / audit details', [
       'Original scan receipt',
@@ -254,7 +260,7 @@ describe('four-step payment decision demo contract', () => {
   });
 
   it('holds while loading instead of exposing a stale allow decision', () => {
-    const text = visibleText(renderPanel('H1', [liveEmpty], { loading: true }));
+    const text = visibleText(renderLivePanel('H1', [liveEmpty], { loading: true }));
 
     expect(text).toContain('HOLD');
     expect(text).toContain('Execution: NOT CONNECTED');
