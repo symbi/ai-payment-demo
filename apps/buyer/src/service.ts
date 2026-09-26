@@ -6,11 +6,15 @@ import { scanUnavailable, type RiskScanner } from './intercepta.ts';
 import { event, hold, initialResult } from './result.ts';
 import { InputError } from './input.ts';
 import { SellerClient, SellerError, type Quote } from './seller.ts';
+import { ProtectedPayment, type TestPaymentDependencies } from './protected-payment.ts';
 
 interface Entry { prompt: string; result: PurchaseResult; quote?: Quote; inspecting?: Promise<void>; paymentCheck?: Promise<void>; checkedPayment: boolean }
 export class BuyerService {
   private entries = new Map<string, Entry>();
-  constructor(private config: BuyerConfig, private seller = new SellerClient(config.sellerUrl), private scan: RiskScanner = async (address, network) => scanUnavailable(address, network, 'Scan adapter unavailable.')) {}
+  private protectedPayment?: ProtectedPayment;
+  constructor(private config: BuyerConfig, private seller = new SellerClient(config.sellerUrl), private scan: RiskScanner = async (address, network) => scanUnavailable(address, network, 'Scan adapter unavailable.'), payment?: TestPaymentDependencies) {
+    if (payment?.testFixtureOnly === true) this.protectedPayment = new ProtectedPayment(config.sellerUrl, payment);
+  }
   async health() {
     return { contractVersion: CONTRACT_VERSION, resourcePath: RESOURCE_PATH, buyer: { connected: true }, seller: await this.seller.health(), configuration: { payToConfigured: isAddress(this.config.payTo), interceptaKeyConfigured: this.config.riskKeyConfigured, paymentRequested: this.config.paymentRequested }, paymentEnabled: false, aiMode: 'not_configured', network: TEST_NETWORK, asset: TEST_USDC, budgetAtomic: PRICE_ATOMIC, risk: { source: 'unavailable', message: '尚未验证真实 Intercepta 扫描；签名与付款关闭' } };
   }
@@ -71,6 +75,20 @@ export class BuyerService {
       if (quote.fingerprint !== entry.quote.fingerprint) { hold(entry.result, '卖方付款条件已变化，原检查失效；请查看新的请求，不会自动付款'); return; }
       const policy = checkPolicy(quote.terms, this.config.payTo);
       if (policy.decision !== 'allow') { this.evaluate(entry.result); return; }
+      if (this.protectedPayment) {
+        const { execution, data } = await this.protectedPayment.execute(entry.result.requestId, entry.prompt, quote);
+        entry.result.execution = execution;
+        entry.result.decision = execution.decision;
+        entry.result.reasons = execution.reasons;
+        // Fixture execution is not a claim that the runtime can make a real payment.
+        entry.result.paymentEnabled = false;
+        entry.result.status = execution.taskComplete ? 'paid' : execution.settlement === 'unknown' ? 'settlement_unknown' : 'held';
+        entry.result.counters.sign = execution.signing === 'signed' ? 1 : 0;
+        entry.result.counters.settle = execution.settlement === 'settled' ? 1 : 0;
+        if (data !== undefined) entry.result.data = data;
+        event(entry.result, 'payment', `离线受控测试状态：${execution.reasonCodes.join(',')}`);
+        return;
+      }
       event(entry.result, 'scan', 'Explicit check: requesting address scan; payment disabled');
       let risk;
       try { risk = await this.scan(quote.terms.payTo, quote.terms.network); }

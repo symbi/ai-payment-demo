@@ -2,7 +2,7 @@ import { decodePaymentRequiredHeader } from '@x402/core/http';
 import { RESOURCE_PATH, type PaymentTerms } from '../../../shared/contracts.ts';
 import { isRecord } from './policy.ts';
 
-export interface Quote { terms: PaymentTerms; fingerprint: string }
+export interface Quote { terms: PaymentTerms; fingerprint: string; full: unknown; url: string; method: 'GET' }
 export class SellerError extends Error {}
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
@@ -13,7 +13,7 @@ export function parseQuote(payload: unknown): Quote {
   if (!isRecord(payload) || payload.x402Version !== 2 || !Array.isArray(payload.accepts) || payload.accepts.length !== 1) throw new SellerError('402 条件缺失、版本不支持或存在多项歧义；暂停');
   const item: unknown = payload.accepts[0];
   if (!isRecord(item) || item.scheme !== 'exact' || !['network', 'asset', 'amount', 'payTo'].every(key => typeof item[key] === 'string' && (item[key] as string).length <= 128) || !Number.isSafeInteger(item.maxTimeoutSeconds) || (item.maxTimeoutSeconds as number) <= 0) throw new SellerError('付款条件结构不完整或不受支持；暂停');
-  return { terms: { scheme: 'exact', network: item.network as string, asset: item.asset as string, amount: item.amount as string, payTo: item.payTo as string }, fingerprint: canonical(payload) };
+  return { terms: { scheme: 'exact', network: item.network as string, asset: item.asset as string, amount: item.amount as string, payTo: item.payTo as string }, fingerprint: canonical(payload), full: structuredClone(payload), url: isRecord(payload.resource) && typeof payload.resource.url === 'string' ? payload.resource.url : '', method: 'GET' };
 }
 
 /** Bound body consumption as well as connection time. Never reflect a seller's raw errors. */
