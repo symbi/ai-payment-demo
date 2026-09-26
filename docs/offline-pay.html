@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; font-src 'none'; form-action 'none'; base-uri 'none'">
+<title>Pay · 付款前的加权评估</title>
+<style>
+:root{--ink:#152a3b;--muted:#506271;--line:#cbd5df;--paper:#f4f6f8;--blue:#234ec2;--green:#126646;--amber:#865100;--red:#a42335}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{max-width:1180px;margin:auto;padding:32px 24px 60px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;border-bottom:1px solid var(--line);padding-bottom:22px}.brand{font-size:23px;font-weight:750;letter-spacing:-1px}.badge{font-size:13px;background:#e4eaf5;color:#29456e;padding:6px 12px;border-radius:30px}h1{font-size:clamp(29px,4vw,43px);line-height:1.2;letter-spacing:-1px;margin:30px 0 10px}h2{font-size:21px;margin:0 0 14px}h3{font-size:16px;margin:0 0 8px}p{margin:8px 0 16px}.muted,small{color:var(--muted)}.intro{max-width:760px}.grid{display:grid;grid-template-columns:340px 1fr;gap:22px;margin-top:26px}.card{background:white;border:1px solid var(--line);border-radius:18px;padding:26px}.eyebrow{font-size:12px;letter-spacing:2px;font-weight:700;color:var(--muted);margin-bottom:14px}.price{font-size:34px;font-weight:750;letter-spacing:-1px;margin:22px 0}.price span{font-size:15px;letter-spacing:0;color:var(--muted)}dl{margin:20px 0}dl div{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid #e6ebf0}dt{color:var(--muted)}dd{margin:0;font-weight:600;text-align:right}label{display:block;font-weight:600;margin:18px 0 8px}select,input{font:inherit;border:1px solid #8797a7;border-radius:8px;padding:10px;background:white;color:var(--ink);max-width:100%}select{width:100%}button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:13px 20px;min-height:48px}button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #a85000;outline-offset:3px}button:disabled{cursor:default;opacity:.65}#pay{width:100%;background:var(--blue);color:white;font-size:21px;font-weight:700;margin-top:20px}#pay:hover:not(:disabled){background:#193c9c}.note{font-size:13px;margin-top:10px}.score-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.score{font-size:64px;font-weight:750;line-height:1.2;letter-spacing:-3px}.score small{font-size:18px;letter-spacing:0}.decision{font-weight:700;padding:7px 13px;border-radius:8px;background:#edf0f5}.allow{color:var(--green);background:#e2f3ea}.hold{color:var(--amber);background:#fff0d4}.deny{color:var(--red);background:#fce6e9}.meter{height:9px;border-radius:8px;background:#e4e9ef;margin:18px 0}.meter div{height:100%;border-radius:8px;background:var(--blue)}#reason{min-height:52px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left;font-size:14px}th{font-size:12px;color:var(--muted);font-weight:650}th,td{padding:14px 8px;border-bottom:1px solid #e1e7ed;vertical-align:top}th:first-child,td:first-child{padding-left:0}td small{display:block;font-size:12px}td:last-child,th:last-child{text-align:right}.weight{width:66px;padding:6px;font-size:14px}details{margin-top:18px}summary{cursor:pointer;font-weight:600;padding:8px 0}.rule{font-size:13px;color:var(--muted)}.steps{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px;font-size:13px}.steps span{padding:6px 10px;background:#edf1f6;border-radius:6px}#result{margin-top:18px;border:1px solid var(--line);padding:18px;border-radius:12px}#result[hidden]{display:none}footer{font-size:13px;color:var(--muted);margin-top:24px}#reset{background:#e8edf5;color:var(--ink);font-size:14px;margin-top:10px}.report{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}.error{color:var(--red)}@media(max-width:850px){.grid{grid-template-columns:1fr}.card{padding:20px}.score{font-size:54px}main{padding:20px 16px}header{align-items:flex-start}.badge{max-width:190px}.score-head{align-items:flex-start}}@media(prefers-reduced-motion:no-preference){button{transition:background .15s}}
+</style>
+</head>
+<body><main>
+<header><div class="brand">PAY / ASSESS</div><span class="badge">离线演示 · 不连接钱包 · 不付款</span></header>
+<h1>先评估，再决定这笔钱该不该花。</h1>
+<p class="muted intro">点击 Pay，按五项权重计算风险分，解释每一分的来源，并展示允许、暂缓或拒绝的结果。所有场景和数值都是合成示例。</p>
+<div class="grid">
+<section class="card" aria-labelledby="product"><div class="eyebrow">01 / PURCHASE</div><h2 id="product">示例合约结构报告</h2><p class="muted">一份本地示例报告：合约结构、权限检查清单与阅读提示。不是安全审计。</p>
+<div class="price">0.001 <span>模拟 USDC</span></div>
+<dl><div><dt>收款对象</dt><dd>Demo Merchant · 虚构</dd></div><div><dt>网络</dt><dd>离线 · 未连接链</dd></div><div><dt>真实钱包余额</dt><dd>未读取</dd></div><div><dt>任务预算</dt><dd id="budget"></dd></div><div><dt>模拟已用 / 预留</dt><dd id="usage">0 / 0 USDC</dd></div></dl>
+<label for="scenario">选择演示场景</label><select id="scenario"><option value="normal">正常购买</option><option value="caution">风险提示 · 暂缓</option><option value="risk">明确风险 · 硬拒绝</option><option value="budget">预算不足</option><option value="changed">付款内容被修改</option><option value="unknown">历史数据不足</option></select>
+<button id="pay">Pay</button><p class="note muted">这个按钮只执行本地评估与模拟，不产生签名或交易。再次评估不会累计扣款。</p>
+</section>
+<section class="card" aria-labelledby="assessment"><div class="eyebrow">02 / ASSESSMENT</div><h2 id="assessment">每一分，都有理由。</h2>
+<div aria-live="polite" aria-atomic="true"><div class="score-head"><div class="score"><span id="score">—</span> <small>/ 100</small></div><span id="decision" class="decision">等待 Pay</span></div><div class="meter" aria-hidden="true"><div id="bar" style="width:0%"></div></div><p id="reason" class="muted">风险分越高越危险。先选择场景和权重，再点击 Pay 查看本次决定。</p></div>
+<div class="table-wrap"><table><thead><tr><th scope="col">检查项 / 来源</th><th scope="col">权重 %</th><th scope="col">风险档位</th><th scope="col">贡献分</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p id="weightStatus" class="rule"></p><button id="reset">恢复默认权重</button>
+<details><summary>评分公式与决定规则</summary><p class="rule">贡献分 = 权重 × 风险档位（0 正常 / 0.5 关注 / 1 高风险）。总风险分为五项贡献之和。权重必须合计 100%，不会自动归一化。</p><p class="rule">演示阈值：低于 25 允许，25 至低于 60 暂缓，60 及以上拒绝。明确风险、超预算或付款内容改变直接拒绝，不能被低权重抵消。必要数据未知则不计算完整总分，暂缓处理。以上为候选演示策略，未经校准，不是诈骗概率或供应商评分。</p></details>
+<div class="steps" aria-label="演示步骤"><span>1 · 固定模拟报价</span><span>2 · 加权评估</span><span>3 · 应用硬规则</span><span>4 · 模拟结果</span></div>
+<section id="result" aria-live="polite" hidden><h3 id="resultTitle"></h3><p id="next"></p><div id="report" class="report" hidden><h3>本地报告样例</h3><p>对象：虚构 ExampleVault。阅读要点：识别存取款入口、检查权限边界、核对事件与状态变更。</p><small>静态教学素材；未通过付款取得，未对真实合约运行分析。模拟执行完成；真实签名、提交、结算均未执行。</small></div></section>
+</section></div><footer>候选策略 weighted-demo-v1 · 数据来源仅为内置 fixture 与本地规则 · 权重变化后必须重新 Pay · 无外部字体、脚本、图片或网络请求</footer>
+</main>
+<script>
+'use strict';
+const labels = ['收款方风险','付款授权内容','商家与资源关联','交易历史','预算压力'];
+const defaults = [40,25,15,10,10];
+const fixtures = {
+ normal: {levels:[0,0,0,0,0],notes:['合成检查未命中风险','模拟付款内容一致','模拟商品与报价匹配','内置正常历史，非真实钱包历史','本次占任务预算 20%'],budget:0.005,hard:null},
+ caution: {levels:[.5,0,0,.5,.5],notes:['合成一般风险提示','模拟付款内容一致','模拟商品与报价匹配','合成历史需复核','本次占任务预算 60%'],budget:0.001/0.6,hard:null},
+ risk: {levels:[1,0,0,0,0],notes:['合成明确禁付标记','模拟付款内容一致','模拟商品与报价匹配','内置正常历史','本次占任务预算 20%'],budget:0.005,hard:'明确禁付标记：即使总分较低，也禁止执行。'},
+ budget: {levels:[0,0,0,0,1],notes:['合成检查未命中风险','模拟付款内容一致','模拟商品与报价匹配','内置正常历史','价格 0.001 超过剩余 0.0005'],budget:0.0005,hard:'任务预算不足：缺少 0.0005 模拟 USDC。'},
+ changed: {levels:[0,1,0,0,0],notes:['合成检查未命中风险','模拟收款对象已从 A 改为 B','模拟商品与报价匹配','内置正常历史','本次占任务预算 20%'],budget:0.005,hard:'付款内容已改变：旧授权失效，不能沿用。'},
+ unknown: {levels:[0,0,0,null,0],notes:['合成检查未命中风险','模拟付款内容一致','模拟商品与报价匹配','历史资料缺失，不计作零风险','本次占任务预算 20%'],budget:0.005,hard:null}
+};
+function evaluate(fixture,weights) {
+ if(weights.length!==5 || weights.some(w=>!Number.isFinite(w)||w<0||w>100) || Math.abs(weights.reduce((a,b)=>a+b,0)-100)>1e-8) return {decision:'invalid',score:null,contributions:[],reason:'权重须为 0–100 的数值，且合计 100%。'};
+ const contributions=fixture.levels.map((x,i)=>x===null?null:x*weights[i]);
+ const score=contributions.some(x=>x===null)?null:contributions.reduce((a,b)=>a+b,0);
+ if(fixture.hard) return {decision:'deny',score,contributions,reason:fixture.hard};
+ if(score===null) return {decision:'hold',score,contributions,reason:'历史证据不足：总分未生成。补足资料后重新评估。'};
+ const decision=score>=60?'deny':score>=25?'hold':'allow';
+ return {decision,score,contributions,reason:decision==='allow'?'所有模拟必需项完整，低于 25 分且无硬拒绝，允许演示继续。':decision==='hold'?'风险分达到暂缓区间；请先复核有风险贡献的项目。':'风险分达到拒绝区间，本次不执行模拟购买。'};
+}
+// UI boundary: pure evaluation above has no side effects or network dependencies.
+const $=id=>document.getElementById(id);
+const fmt=n=>Number.isInteger(n)?String(n):String(Number(n.toFixed(2)));
+$('rows').innerHTML=labels.map((name,i)=>`<tr><td>${name}<small>${i===0?'合成风险证据（非 Intercepta 实测）':i===3?'合成历史':'本地模拟规则'}</small></td><td><input class="weight" type="number" min="0" max="100" step="1" value="${defaults[i]}" aria-label="${name}权重"></td><td id="level${i}">待评估</td><td id="part${i}">—</td></tr>`).join('');
+const inputs=Array.from(document.querySelectorAll('.weight'));
+function weights(){return inputs.map(e=>e.value.trim()===''?NaN:Number(e.value));}
+function invalidate(){
+ const w=weights(),valid=evaluate(fixtures.normal,w).decision!=='invalid';
+ $('weightStatus').textContent=valid?'权重合计 100% · 可点击 Pay': '权重无效：请填写 0–100 的数值，合计须为 100%。';
+ $('weightStatus').className=valid?'rule':'rule error'; $('pay').disabled=!valid;
+ $('score').textContent='—';$('decision').textContent='等待 Pay';$('decision').className='decision';$('bar').style.width='0%';
+ $('reason').textContent='当前输入尚未评估。点击 Pay，计算本次风险与决定。';$('result').hidden=true;$('report').hidden=true;
+ labels.forEach((_,i)=>{$('level'+i).textContent='待评估';$('part'+i).textContent='—';});
+ $('budget').textContent=Number(fixtures[$('scenario').value].budget.toFixed(6))+' 模拟 USDC'; $('usage').textContent='0 / 0 USDC';
+}
+inputs.forEach(e=>e.addEventListener('input',invalidate));$('scenario').addEventListener('change',invalidate);
+$('reset').addEventListener('click',()=>{inputs.forEach((e,i)=>e.value=String(defaults[i]));invalidate();});
+$('pay').addEventListener('click',()=>{
+ const fixture=fixtures[$('scenario').value],r=evaluate(fixture,weights());if(r.decision==='invalid'){invalidate();return;}
+ $('score').textContent=r.score===null?'未知':fmt(r.score);$('bar').style.width=(r.score??0)+'%';
+ $('decision').textContent={allow:'允许 · 模拟',hold:'暂缓',deny:'拒绝'}[r.decision];$('decision').className='decision '+r.decision;
+ $('reason').textContent=r.reason;
+ labels.forEach((_,i)=>{$('level'+i).textContent=(fixture.levels[i]===null?'未知':fmt(fixture.levels[i]))+' · '+fixture.notes[i];$('part'+i).textContent=r.contributions[i]===null?'—':fmt(r.contributions[i]);});
+ $('result').hidden=false;$('report').hidden=r.decision!=='allow'; $('usage').textContent=r.decision==='allow'?'0.001 / 0 USDC':'0 / 0 USDC';
+ $('resultTitle').textContent=r.decision==='allow'?'模拟购买完成 · 查看本地样例':r.decision==='deny'?'模拟执行已停止':'模拟执行等待复核';
+ $('next').textContent=r.decision==='allow'?'模拟支出 0.001 USDC，模拟预留已释放。真实钱包余额未读取，真实资金未变动。':r.decision==='deny'?'下一步：解决禁付原因，或创建内容正确且预算充足的新请求，再重新评估。未签名、未提交（仅本地模拟）。':'下一步：补足缺失信息或复核风险证据，再重新评估。没有自动重试，也没有付款。';
+});
+invalidate();
+</script></body></html>
