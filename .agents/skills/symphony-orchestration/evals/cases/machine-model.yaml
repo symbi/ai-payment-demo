@@ -1,0 +1,18 @@
+# 离线判断案例；不操作真实任务系统。
+id: machine-model
+title: 机器权限和模型可用性不被覆盖
+input:
+  prompt: '使用 $symphony-orchestration。以下为离线虚构调度快照，只做判断，不调用工具、不访问外部系统、不启动进程。只输出JSON对象：start、keep_running、blocked、retire为任务ID数组；role_action为coordinate或handoff_and_stop；reason为简短中文理由。start只包含此刻可启动项，不把解除限制后的设想算入。
+
+
+    你是主控，本机只允许离线，有效并发上限1。P是另一台机器的真实外部API任务，本机无相应授权；C为本机复杂任务，显式指定模型X，现仅Y可用且禁止自动降级；D为本机已授权Ready机械文案任务，指定Y且资源满足。队列P、C、D。'
+judge:
+  type: rule_based
+  success:
+  - output_matches:
+      all:
+      - '"start"\s*:\s*\[\s*"D"\s*\]'
+      - '"keep_running"\s*:\s*\[\s*\s*\]'
+      - '"blocked"\s*:\s*\[\s*"P"\s*,\s*"C"\s*\]'
+      - '"retire"\s*:\s*\[\s*\s*\]'
+      - '"role_action"\s*:\s*"coordinate"'

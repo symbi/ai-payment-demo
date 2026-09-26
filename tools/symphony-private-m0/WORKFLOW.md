@@ -34,6 +34,9 @@ hooks:
     gh issue edit 9 --repo symbi/ai-payment-demo --remove-label symphony-private-m0-ready-20260927 --add-label symphony-human-review
 ---
 Execute ONLY GH-9, the private-machine M0 issue. Do not claim any other issue or total-goal card.
+
+Scheduling reference: read `.agents/skills/symphony-orchestration/SKILL.md` in the checkout when present. Your role here is Worker: finish only this assigned packet and stop; the coordinator owns subsequent queue admission. If this historical checkout lacks the optional skill file, these explicit M0 instructions remain sufficient. This reference does not change the disabled label, fixed issue, hooks, concurrency, retry limits or permissions above. It does not turn this historical single-issue workflow into a multi-task dispatcher.
+
 {{ issue.title }}
 {{ issue.description }}
 

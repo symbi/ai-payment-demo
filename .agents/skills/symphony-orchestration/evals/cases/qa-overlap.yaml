@@ -1,0 +1,18 @@
+# 离线判断案例；不操作真实任务系统。
+id: qa-overlap
+title: 冻结版本验收可以与独立开发重叠
+input:
+  prompt: '使用 $symphony-orchestration。以下为离线虚构调度快照，只做判断，不调用工具、不访问外部系统、不启动进程。只输出JSON对象：start、keep_running、blocked、retire为任务ID数组；role_action为coordinate或handoff_and_stop；reason为简短中文理由。start只包含此刻可启动项，不把解除限制后的设想算入。
+
+
+    你是主控，有效并发上限2。QA所有依赖已集成，验收输入固定，只读冻结副本；N是独立Ready任务，只写新文件feature/n.ts，已交接，无未决依赖，不改变QA副本。两项均获授权，模型与资源满足，无Running。'
+judge:
+  type: rule_based
+  success:
+  - output_matches:
+      all:
+      - '"start"\s*:\s*\[\s*"QA"\s*,\s*"N"\s*\]'
+      - '"keep_running"\s*:\s*\[\s*\s*\]'
+      - '"blocked"\s*:\s*\[\s*\s*\]'
+      - '"retire"\s*:\s*\[\s*\s*\]'
+      - '"role_action"\s*:\s*"coordinate"'

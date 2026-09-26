@@ -1,0 +1,18 @@
+# 离线判断案例；不操作真实任务系统。
+id: reconcile
+title: 恢复时不重复领取和不执行汇总卡
+input:
+  prompt: '使用 $symphony-orchestration。以下为离线虚构调度快照，只做判断，不调用工具、不访问外部系统、不启动进程。只输出JSON对象：start、keep_running、blocked、retire为任务ID数组；role_action为coordinate或handoff_and_stop；reason为简短中文理由。start只包含此刻可启动项，不把解除限制后的设想算入。
+
+
+    你是恢复后的主控。并发上限2。A在tracker标Ready，但本机确认其匹配进程正在执行；B进程已结束，产物已保存交接，Ready尚未撤销；T是只作汇总的总目标卡，也误有Ready标签。无其他任务。retire表示需要撤销可领取标记，不代表删除卡片。'
+judge:
+  type: rule_based
+  success:
+  - output_matches:
+      all:
+      - '"start"\s*:\s*\[\s*\s*\]'
+      - '"keep_running"\s*:\s*\[\s*"A"\s*\]'
+      - '"blocked"\s*:\s*\[\s*\s*\]'
+      - '"retire"\s*:\s*\[\s*"B"\s*,\s*"T"\s*\]'
+      - '"role_action"\s*:\s*"coordinate"'

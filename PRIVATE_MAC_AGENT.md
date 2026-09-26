@@ -22,6 +22,8 @@ Do not copy the company machine's global Codex configuration, memories, credenti
 
 ## Before starting work
 
+When this task uses Symphony, read the repository's [symphony-orchestration Skill](.agents/skills/symphony-orchestration/SKILL.md) and [AGENTS.md](AGENTS.md). This portable text does not require installing a global skill pack. The coordinator fills available slots only with eligible tasks; a worker delivers its assigned artifacts and stops. Use the active workflow's actual machine scope, concurrency, model and retry controls. Historical single-issue workflows remain restricted until explicitly updated; this guide does not enable them.
+
 1. Confirm that the repository is `symbi/ai-payment-demo` and that the current branch and working tree are understood.
 2. Read `README.md` and `docs/PRIVATE_MAC_RISK_CHECK.md` before any provider check.
 3. Keep `.env`, API keys, seed phrases, private keys, wallet exports, cookies, and screenshots containing secrets local. Never commit, paste, print, upload, or request them.
