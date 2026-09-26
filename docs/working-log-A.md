@@ -331,3 +331,104 @@ a6218bcc734236455aceb47713ea8bc3598582153539cc3dc21548b1522cfb9f  apps/seller/sr
 - tester请求模型gpt-6-luna/medium，agent path /root/seller_test；实际thread ID unknown，不将agent path视为thread ID。
 
 最终结论：本次ETH44 seller Contract Insights限定方案可交协调者集成；无待修P1/P2。上述非阻断建议保留为测试覆盖边界，不扩张本轮工作。独立测试与高级review并行且未重复跑套件。K02浏览器演示、真实入口运行、真实付款/签名/链上结算仍需要独立适用证据；本review不更新Taskboard、不宣称这些已完成。
+
+
+## 纯报告校验交付完成（2026-09-26）
+授权/身份：02转达用户授权；A主Agent唯一seller writer（本窗口01a0d923-7df1-7232-87b5-7bd2212a62bb，沿用Astra/medium）。复用seller_test（Luna/medium）及seller_review（Astra/medium），独立测试与代码审查并行，最终review核对测试报告。
+Input：现有createSampleReports().report，调用者在购买前固定的可信expectedSourceSha256。Output：apps/seller/src/report-validation.ts及report-validation.test.ts；纯TypeScript，无fs/import/网络/运行副作用，不改app.ts付款门控。
+03已确认接口：validatePaidStructureReport(value: unknown, expectedSourceSha256: string): ReportValidationResult，返回{ok:true,report:ValidatedPaidStructureReport}或{ok:false,reason:string}。校验kind/schemaVersion/bundled身份、64位小写hash与trusted expected相同、三类metrics各一次且计数与declarations一致、合法名称/正整数行号/method/limitations；成功返回仅验证字段的副本，丢弃外来orderId等字段。
+可信样例SHA：1f9fb6a40a10aed8b91c0370e527b2e35e54ad8e0c56e2f448c2277a2fedd810（从ExampleVault.sol源bytes独立计算）。不能从待验证响应复制expected hash；这是声明源版本一致性，不是源码语义真实性/整个报告哈希/付款或订单凭据。
+针对性坏例在测试文件：public-sample、wrong schema、source hash='a'.repeat(64)、缺declarations、重复metrics key、计数+1、line=0/1.5/字符串/unsafe、稀疏limitations等。
+验证：初版作者48/48+typecheck；独立review发现1个稀疏数组P2，A修复并加回归。修复版独立Luna于13:22:22 JST运行40个validator+9个既有extractor=49/49，typecheck exit0；两文件起止哈希一致。原Astra reviewer复验完整/部分稀疏数组并核对新版测试报告，最终PASS，无剩余P1/P2。旧HTTP35套件未重复；此前门控证据保留为独立范围，不相加冒充全量重跑。
+文件SHA：report-validation.ts=2022bb5b772017b3031e9d3ce74580825acefb9d9d108ff40250f99af95f783e；report-validation.test.ts=26e82d05ec9f3c229f0cf8161a32bee852f980d57fe2aa2cb087b7df6c5386d3。
+两文件清单digest=f8b2819e78b868920022b1f929df0ec532af04a11bace52d612101be0c80e79e（/private/tmp/seller-report-validation-manifest.txt，按上述顺序SHA+两个空格+相对路径，UTF-8 LF含末尾换行；不是Git commit）。app.ts SHA仍274521dee3c1ccf2913772bb0b35029901a0b73ca55a4ebb8cd2c8627d14e53a。
+依赖/未完成：03A独占buyer内订单resource/提交目标/receipt/持久幂等/unknown绑定，02协调同版本运行、QA与真实购买；本模块不判已付款，不验证源码声明真实性，不执行付款/签名/API，不修改buyer/shared/root或运行服务。A本增量无阻塞，可供集成；集成和用户验收未由纯测试证明。状态in_review，不done。
+完整测试/审查报告已附docs/working-log-A.md。交付对象仍为内置教学合约结构报告，非审计产品，不新建商品或天气场景。
+
+### 本增量独立测试原文
+
+# Seller report validation read-only test report
+
+Date: 2026-09-26 JST  
+Runner: requested Luna / medium test role, agent path `/root/seller_test`; actual thread ID unknown.  
+Scope: `apps/seller/src/report-validation.ts` and `report-validation.test.ts`, plus the contract-insights source/sample needed to validate provenance. No project edits, HTTP/API calls, signing, payments, or persistent service operations.
+
+## Frozen file hashes
+
+The immediately preceding 48-test run was against the earlier validator snapshot and is superseded. After the sparse-array fix, the following start/end hashes were identical for the two in-scope files:
+
+- `apps/seller/src/report-validation.ts`: `2022bb5b772017b3031e9d3ce74580825acefb9d9d108ff40250f99af95f783e`
+- `apps/seller/src/report-validation.test.ts`: `26e82d05ec9f3c229f0cf8161a32bee852f980d57fe2aa2cb087b7df6c5386d3`
+
+Bundled source hash, calculated independently by SHA256 over `ExampleVault.sol` bytes: `1f9fb6a40a10aed8b91c0370e527b2e35e54ad8e0c56e2f448c2277a2fedd810`. This equals `createSampleReports().report.source.sha256`.
+
+## Checks and results
+
+- `npm test -- apps/seller/src/report-validation.test.ts apps/seller/src/contract-insights.test.ts` — PASS, 2 files / 49 tests (Vitest started 13:22:22 JST; duration 138 ms).
+- `npm run typecheck` — PASS, `tsc --noEmit`, exit 0.
+- A direct local module probe confirmed: real generated report accepted; wrong source hash rejected; wrong metric count rejected; public preview rejected. The real sample SHA independently computed from bundled source matched the report SHA.
+- Tests cover shape/identity/version, trusted expected-hash format and mismatch, preview rejection, category count consistency, malformed declarations/metrics, and a sparse `limitations` array. The sparse-array check is included in the 49-test revision.
+
+## Limits
+
+This is pure JSON-shape/version validation. Expected source hash comparison pins the report's declared source version, but the validator does not recompute declarations from source bytes or prove that declaration names/lines are truthful for that source. Internal consistency between declaration arrays and metric counts is checked. The module also does not prove HTTP resource/order binding, payment receipt validity, settlement, or chain state. No HTTP or payment behavior was exercised.
+
+### 本增量独立审查原文（含首审和修复复审历史）
+
+# Paid report validator 独立只读 delta review
+
+最终结论：PASS。原1项P2已修复，独立反例复验与新版tester结果均通过。下面保留原问题及修复证据；没有运行旧HTTP套件或访问外部、付款、启动服务。未修改项目文件。沿用原Astra/medium reviewer。
+
+## [P2] 稀疏 limitations 数组破坏成功返回类型
+
+位置：`/Users/v-sheng.huang/sboai/ai-payment-demo/apps/seller/src/report-validation.ts:39`（limitations的length/every检查）及返回字段复制。
+
+`Array.prototype.every` 跳过空槽。输入其余字段合法且 `limitations = Array(1)` 时，非空数组检查和 `every(text)` 均通过；返回处 `[...value.limitations]` 将空槽变为显式 `undefined`。结果为 `ok:true`，但 `report.limitations[0]` 不是声明的string，违反 `ValidatedPaidStructureReport.limitations: string[]` 的承诺。
+
+独立纯函数复现输出：
+
+```json
+{"ok":true,"limitationType":"undefined","hasOwnZero":true}
+```
+
+建议使用for-of逐项验证（数组迭代器会产生undefined，从而拒绝空槽），或先安全复制后对复制结果逐项校验；加入 `Array(1)`/部分稀疏数组失败回归。改动不需要fs或支付依赖。
+
+适用边界：标准JSON.parse不会产生稀疏数组，因此该反例不证明正常网络JSON可绕过校验，也不是支付绕过。但该公开接口接受unknown且承诺返回安全的string[]，因此仍是可修复的类型soundness缺陷。无需为此扩张为任意getter/proxy安全沙箱。
+
+## 其余审查结果
+
+- validator无imports、无fs/network/payment/order调用，不修改输入。成功时重建source、metrics、declarations和limitations，丢弃未识别字段；正常JSON结构下不存在输出对象共享输入引用的问题。
+- identity检查kind/schemaVersion/sampleName；source检查filename/path/language/origin及小写64位SHA；独立expected hash格式检查及相等绑定明确。
+- 三类declaration要求数组，名称格式和正安全整数行号；metrics恰好三类、无重复、计数为非负安全整数且与声明数组长度一致。
+- 作者测试直接使用createSampleReports().report，并测试JSON往返对象、未知order字段剥离、输出修改不改变输入、错schema/hash/source、缺结构和count不一致。设计与真实报告兼容；作者39+9=48/48和typecheck PASS仅作为作者执行记录，本review未重复运行这套测试。
+- 注释清楚说明expected hash来自已固定订单上下文，校验不证明源代码真实性、付款、receipt、订单/资源绑定；这些由03A独占，没有在validator内复制支付逻辑。
+- 不验证声明是否真实存在于源代码、不验证limitations具体文案，与批准的纯结构校验范围一致，不列为缺陷。
+
+## 冻结文件
+
+```text
+555e11c9791c83f92cee8baa9ec476050ef35bd41e2bbf49ad5965173837a25f  apps/seller/src/report-validation.ts
+cefc9b372177aa43a19937c5e587613a4eb805d12900341deab5637891208a41  apps/seller/src/report-validation.test.ts
+```
+
+需原writer修正上述P2后，按新两文件hash进行delta复审；不需要重跑未修改的旧HTTP35套件。
+
+
+## 修复版本 delta 复验
+
+修复：limitations在every前使用spread显式展开空槽；新增sparse limitations回归。只涉及该验证表达式与一个回归项。
+
+本 reviewer 独立纯函数复验 Array(1)，以及 ['valid'] 后扩length形成部分空槽；两者均返回 `{"ok":false,"reason":"invalid_method_or_limitations"}`。P2已关闭，未发现新增P1/P2；正常纯JSON场景的校验规则未放宽。已收到并核对tester新版49项执行结果，见最终汇合。
+
+当前复审绑定：
+```text
+2022bb5b772017b3031e9d3ce74580825acefb9d9d108ff40250f99af95f783e  apps/seller/src/report-validation.ts
+26e82d05ec9f3c229f0cf8161a32bee852f980d57fe2aa2cb087b7df6c5386d3  apps/seller/src/report-validation.test.ts
+```
+
+
+## 最终汇合
+
+已读取 `/private/tmp/seller-report-validation-test.md`：2026-09-26 13:22:22 JST开始，两文件49/49 PASS，Vitest duration138ms；typecheck exit0。tester起止两文件hash与本 reviewer 修复版完全一致；从ExampleVault.sol源bytes独立计算SHA亦与生成报告一致。直接probe确认真实报告接受、错hash/计数和preview拒绝。
+
+最终PASS仅对应上述2022bb5…/26e82d…版本：纯结构校验及声明source版本绑定满足约定，无剩余P1/P2。之前48项旧版本执行结果不作为修复版证据。03A继续独占订单、receipt、资源/支付绑定；本validator不证明报告声明真实性或付款完成。未重跑HTTP旧套件，无外部或支付行为。
