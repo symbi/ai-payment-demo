@@ -47,7 +47,7 @@ try{
   const evidence=page.locator('.private-risk-evidence');
   await expect(evidence.getByRole('heading',{name:'Synthetic provider evidence',exact:true})).toBeVisible();
   await expect(evidence).toContainText('Not a live Intercepta response');
-  await expect(evidence.locator('dl')).toContainText('SIMULATED');
+  await expect(evidence.locator('.private-risk-evidence-head dl')).toContainText('SIMULATED');
   await expect(page.locator('.private-risk-badges')).toContainText('SIMULATED');
   await expect(page.locator('.private-risk-badge.is-live')).toHaveCount(0);
   await expect(page.getByText('LIVE',{exact:true})).toHaveCount(0);
