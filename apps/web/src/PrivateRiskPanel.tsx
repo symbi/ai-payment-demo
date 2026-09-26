@@ -9,6 +9,7 @@ import {
   LIVE_PAYMENT_POLICY_REVISION,
   type LivePaymentPolicyResult,
 } from '../../../shared/live-payment-policy.ts';
+import { PaymentDecisionReceiptDownload } from './PaymentDecisionReceiptDownload.tsx';
 import { RiskReceiptDownload } from './RiskReceiptDownload.tsx';
 import './private-risk.css';
 
@@ -256,6 +257,12 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           <p>The original receipt preserves the raw scan assessment when available. It is separate from the project policy above and never grants execution.</p>
           <p><strong>Source clues (unverified)</strong>: {candidate.context}</p>
           <RiskReceiptDownload status={status} candidateId={selectedId} />
+          <PaymentDecisionReceiptDownload
+            status={status}
+            candidateId={selectedId}
+            amountUsdc={amountUsdc}
+            loading={loading}
+          />
         </details>
       </section>
     </div>

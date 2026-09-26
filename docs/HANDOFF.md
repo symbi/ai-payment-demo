@@ -15,7 +15,7 @@ The private page now presents payment intent, Intercepta evidence, a project pol
 5. `mixer_transfers`, `non_kyc_transfers`, `sanction_address_communication`, `fake_phishing_transfer`, `fake_phishing_contract_communication` or `rug_pull_trader` produces ALLOW WITH LIMIT, with a project-defined 0.001 USDC cap. Amounts above the cap require reduction; the application does not change the entered amount automatically.
 6. A complete live HTTP 200 record with zero traits produces ALLOW under this policy; it does not certify address safety. Other recognized but unmapped evidence produces HOLD.
 
-Every outcome retains `Execution: NOT CONNECTED`. No wallet connection, signing, payment, budget reservation or settlement was added. A saved spending grant shows its actual budget, single-payment limit and expiry only; absent grants show Not configured. This page does not claim that a grant covers the selected recipient or that remaining budget is known. Historical scans, candidates, the 20-attempt quota, scanner/parser, server-only key handling, receipt filtering and payment backend are unchanged.
+Every outcome retains `Execution: NOT CONNECTED`. No wallet connection, signing, payment, budget reservation or settlement was added. A saved spending grant shows its actual budget, single-payment limit and expiry only; absent grants show Not configured. This page does not claim that a grant covers the selected recipient or that remaining budget is known. Historical scans, candidates, the configured quota, scanner/parser, server-only key handling, receipt filtering and payment backend are unchanged.
 
 On a private machine, update the existing authorized checkout of `demo/permission-and-risk-v1`, preserving local configuration and journals. Run `npm run ci:local` with installed dependencies and `npm run demo:prepare`, then use the existing `npm run demo:live` entrypoint and its printed loopback URL. Existing saved records are evaluated locally. A manual Assess Payment for a previously unscanned recipient consumes the existing scan allowance; do not clear journals or retry saved recipients. No provider API or payment call is needed to validate the page offline.
 
@@ -118,3 +118,12 @@ At each card completion/pause, comment with Input/version; Output files/start co
 Checkpoint comments also record the reviewed commit or uncommitted content digest, independent review findings, visible demo evidence, local commit SHA, push outcome and personal-computer reproduction outcome. Unperformed steps remain unverified. A clean install in a second directory on this machine is not another-computer verification. Partial-module checks do not replace final C/D full-flow acceptance.
 
 References: https://ethglobal.com/events/tokyo2026/prizes/intercepta ; https://docs.x402.org/advanced-concepts/lifecycle-hooks ; https://docs.web3antivirus.io/reference/quick-scan-address
+
+
+## Current project decision snapshot (v9)
+
+Open **Technical / audit details** in Execution gating, then **Download project decision snapshot**. This separate local JSON includes the currently selected recipient, literal amount, canonical project policy result, original scan receipt v2, local export time, and `NOT_CONNECTED`. Changing recipient or amount changes the next snapshot; loading or invalid/missing current input disables export. Saved evidence is reused without scanning. The original v2 download remains unchanged and can still report HOLD independently of project policy.
+
+The snapshot is a local diagnostic artifact, not a signed attestation, a new provider response, or proof of payment. User-provided U1–U3 candidate clues are available with unverified provenance; adding or selecting them does not scan. Prefer waiting for the numeric trait-details update before manually scanning new candidates, because older evidence did not retain those optional numeric observations.
+
+Offline validation: 1,194 tests, typecheck, both builds, current-intent JSON download checks, and desktop/mobile browser checks passed. Browser evidence uses explicit intercepted fixtures; no real provider, wallet, signature or payment was exercised. Cloud CI status is separate and is not represented by these local results.

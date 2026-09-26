@@ -21,6 +21,9 @@ export const PRIVATE_RISK_CANDIDATES = [
   { id: 'P8', address: '0xbb69e01921b17cd22080968bcc96ba6115da6062', context: '优先验证候选 8（OFAC 2026-08-07；live 结果未知）' },
   { id: 'P9', address: '0xe05f529f5284d75624eba386cb716928c3b54a2a', context: '优先验证候选 9（OFAC 2026-08-07；live 结果未知）' },
   { id: 'P10', address: '0x6b69e2a7545c166417a80c61a77562052bffa9c5', context: '优先验证候选 10（OFAC 2026-08-07；live 结果未知）' },
+  { id: 'U1', address: '0xff8eF7bC455a57e5893232203052Ce0232b39Fa2', context: '关联线索候选，来源由用户提供／待实际扫描' },
+  { id: 'U2', address: '0xB60Db028df45D26650D60A3C3fB23227Aa3cc144', context: '关联线索候选，来源由用户提供／待实际扫描' },
+  { id: 'U3', address: '0x9D0163e76BbCf776001E639d65F573949a53AB03', context: '关联线索候选，来源由用户提供／待实际扫描' },
 ] as const;
 export type PrivateCandidateId = typeof PRIVATE_RISK_CANDIDATES[number]['id'];
 export const PRIVATE_SCAN_REVISION = 'private-risk-scan-v1' as const;
