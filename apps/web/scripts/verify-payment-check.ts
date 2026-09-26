@@ -27,6 +27,7 @@ try {
      if (mode === 'malformed') value.execution.evidence.coverage = ['verified'];
      if (mode === 'wrong-id') value.requestId = 'different-id';
      if (mode === 'settled') { Object.assign(value.execution, { decision: 'allow', signing: 'signed', submission: 'submitted', settlement: 'settled', taskComplete: true }); value.status = 'paid'; value.data = { kind: 'public-sample' }; }
+     for (const object of [value, value.terms, value.risk, value.risk?.scan, value.execution, value.execution?.evidence]) if (object) object.unexpectedPrivateField = 'CANARY_NOT_PUBLIC';
      return route.fulfill({ json: value });
    }
    throw new Error(`Forbidden API ${url.pathname}`);
@@ -35,24 +36,30 @@ try {
  const countPay = () => calls.filter(path => path === '/api/pay').length;
  const quote = async () => { await page.goto(origin); await page.getByRole('button', { name: 'Get quote', exact: true }).click(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeVisible(); };
  await page.goto(origin); await expect(page.getByRole('button', { name: 'Get quote', exact: true })).toBeEnabled(); assert.equal(countPay(), 0); assert.equal(calls.filter(p => p === '/api/inspect').length, 0);
+ await expect(page).toHaveTitle('Agent 受控付款'); await expect(page.getByRole('heading', {name:'Agent 受控付款',exact:true})).toBeVisible();
  await expect(page.getByLabel('Evidence view')).not.toBeVisible();
- await quote(); await expect(card).toContainText('0x2222…2222'); await expect(card).toContainText('eip155:84532'); await expect(card.locator('.payment-status')).toContainText('Signature: Unreported'); assert.equal(countPay(), 0);
- await card.getByRole('button', { name: 'Check risk' }).dblclick(); await expect(card.getByRole('heading', { name: 'Check returned · Execution unreported' })).toBeVisible(); assert.equal(countPay(), 1); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled(); await expect(card).toContainText('Raw score 0 (uninterpreted)');
- const beforeQuery = countPay(); await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('button', { name: 'Query request' })).toBeEnabled(); assert.equal(countPay(), beforeQuery);
+ await expect(card).toContainText('Risk: Unknown. No usable evidence.');
+ await expect(card).toContainText('Payment is disabled.');
+ await expect(card).toContainText('Not a contract audit.');
+ await expect(card.locator('.flow-section-title')).toHaveText(['2 · Payment decision','3 · Execution','4 · Result & evidence']);
+ await quote(); await expect(card).toContainText('0x2222222222222222222222222222222222222222'); await expect(card).toContainText('eip155:84532'); await expect(card.locator('.payment-status')).toContainText('Signature: Unknown · Not reported'); assert.equal(countPay(), 0);
+ await card.getByRole('button', { name: 'Check risk' }).dblclick(); await expect(card.getByRole('heading', { name: 'Check received · Payment status unknown' })).toBeVisible(); assert.equal(countPay(), 1); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled(); await expect(card).toContainText('Raw score 0 (uninterpreted)');
+ const beforeQuery = countPay(); await card.getByRole('button', { name: 'Refresh status' }).click(); await expect(card.getByRole('button', { name: 'Refresh status' })).toBeEnabled(); assert.equal(countPay(), beforeQuery);
  const details = page.locator('.live-payment-check > .payment-details'); await details.locator(':scope > summary').click(); await details.locator('.offline-examples > summary').click(); const demo = details.locator('.offline-examples'); await demo.getByRole('button', { name: 'Preview check' }).click(); await expect(demo.getByRole('heading', { name: 'Block', exact: true })).toBeVisible(); assert.equal(countPay(), beforeQuery);
  for (const state of ['signing', 'submission', 'settlement', 'malformed', 'wrong-id', 'timeout']) {
    mode = state; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible(); await expect(card.locator('.payment-status')).toContainText('Signature: Unknown'); await expect(card.locator('.payment-status')).toContainText('Settlement: Unknown'); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled();
  }
  mode = 'settlement'; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
- mode = 'legacy-no-scan'; await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
+ mode = 'legacy-no-scan'; await card.getByRole('button', { name: 'Refresh status' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
  mode = 'timeout'; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
- mode = 'legacy-no-scan'; await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('heading', { name: 'Quote received' })).toBeVisible(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled();
+ mode = 'legacy-no-scan'; await card.getByRole('button', { name: 'Refresh status' }).click(); await expect(card.getByRole('heading', { name: 'Quote received' })).toBeVisible(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled();
  mode = 'settled'; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card).toContainText('Policy permits · Not proof of payment'); await expect(card).toContainText('Completion is unconfirmed');
- failQuery = true; await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible(); await expect(card.locator('.payment-status')).not.toContainText('settled'); failQuery = false;
+ failQuery = true; await card.getByRole('button', { name: 'Refresh status' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible(); await expect(card.locator('.payment-status')).not.toContainText('settled'); failQuery = false;
  mode = 'hold';
  for (const gate of ['health', 'result', 'quote']) { healthEnabled = gate === 'health'; resultEnabled = gate === 'result'; invalidQuote = gate === 'quote'; const before = countPay(); await quote(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled(); assert.equal(countPay(), before); }
- healthEnabled = false; resultEnabled = false; invalidQuote = false; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Paused by backend policy' })).toBeVisible();
- for (const width of [1440, 390, 320]) { await page.setViewportSize({ width, height: 950 }); assert.equal(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth), true); await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); scrollTo(0, 0); }); await page.screenshot({ path: `/private/tmp/intercepta-live-${width}.png`, fullPage: true }); }
+ healthEnabled = false; resultEnabled = false; invalidQuote = false; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Paused by backend policy' })).toBeVisible(); await expect(card.locator('.payment-limitations')).toContainText('Risk meaning is unconfirmed. Network coverage is unconfirmed.');
+ await details.locator(':scope > summary').click(); await details.locator('.response-facts > summary').click(); await expect(details.locator('.response-facts pre')).toContainText('op-1'); await expect(details.locator('.response-facts pre')).not.toContainText('CANARY_NOT_PUBLIC'); await details.locator(':scope > summary').click();
+ for (const width of [1440, 390, 320]) { await page.setViewportSize({ width, height: 950 }); assert.equal(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth), true); await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); scrollTo(0, 0); }); await page.screenshot({ path: `/private/tmp/agent-payment-${width}.png`, fullPage: true }); }
  assert.deepEqual(errors, []);
  console.log(JSON.stringify({ result: 'PASS', checks: ['real-order default/no automatic inspect or scan', 'quote identity/recipient/network', 'explicit check only/duplicate lock', 'legacy execution unreported/zero uninterpreted', 'query no scan', 'offline samples isolated in Details', 'each execution unknown/missing execution cannot clear prior unknown','lost check plus legacy query never claims check receipt', 'malformed execution and mismatched ID', 'lost response remains unknown/no retry', 'settled/public sample not completion', 'query failure clears success display', 'health/result/payment quote gates', '1440/390/320 without overflow', 'no runtime errors'], evidence: 'intercepted fixtures only; no buyer/provider/payment calls' }));
 } finally { await browser?.close(); await vite.close(); }
