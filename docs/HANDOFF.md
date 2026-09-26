@@ -1,5 +1,7 @@
 # Execution handoff — contract v1
 
+当前后续工作入口：[项目待办清单](TODO.md)。按最新交付状态维护；下文早期阶段记录不代表当前运行状态或新增授权。
+
 Authorized 2026-09-26: local basic demo first. This is personal work; no company code, accounts, keys or data. Reviewed and locally verified modules may be committed and pushed to the user's verified SYMBI personal repository. No public release, paid LLM calls or real-money payments. Do not fake development history or claim simulated results are live. User requested separate A/B Codex tasks. Keep Taskboard labels separate from actual task/thread binding.
 
 ## Agent Payment Guard (2026-09-27)
@@ -48,7 +50,7 @@ The buyer page stores only its request ID and whether a check was attempted in t
 
 The existing Report offer under Details retains the explicit new-quote action after a confirmed result. No Grant, risk result, quote, key or payment permission is saved in browser recovery storage.
 
-Private Mac update: use the existing checkout and its existing journals, pull `demo/permission-and-risk-v1` with fast-forward only, run `npm run demo:prepare`, and restart the existing private entry with `npm run demo:live`. Preserve `.env`, `.runtime`, saved Grant and scan records; keep the existing configured `PRIVATE_RISK_MAX_REQUESTS` (20 for the user's current run). Updating or refreshing the page does not scan. No limit increase or reset is part of this change.
+Private Mac update: use the existing checkout and its existing journals, pull `demo/permission-and-risk-v1` with fast-forward only, run `npm run demo:prepare`, and restart the existing private entry with `npm run demo:live`. Preserve `.env`, `.runtime`, saved Grant and scan records; keep the existing configured `PRIVATE_RISK_MAX_REQUESTS` (the user reports 200; verify the private machine configuration without resetting history). Updating or refreshing the page does not scan. No limit increase or reset is part of this change.
 
 The upstream candidate additions `8bdfd9c`/`1ab83f1` are retained. P1–P10 appear in the private address selector after rebuilding. Their descriptions are user-provided source clues, unverified here, not provider findings or predicted scores. No local candidate loader or separate pool was added. On the private computer only, manually select one unattempted candidate (P1 first if that is the intended case), scan once, then inspect HTTP/transport/shape evidence before choosing another. Stop on 404 or unavailable evidence rather than blindly trying more. Existing records are query-only and failed attempts still count. The company-machine validation uses only fixtures and makes no provider/crypto/source-website requests.
 
