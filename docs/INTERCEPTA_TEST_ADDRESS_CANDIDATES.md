@@ -4,6 +4,35 @@ Purpose: candidate **Ethereum mainnet** addresses for live Intercepta scans duri
 
 Important: these are **candidates**, not pre-labeled Intercepta results. Final Low / Gray / High demo grouping must be chosen **after** scanning them with the real Intercepta API. Do not hard-code expected scores or claim an address is safe because of this file.
 
+## 0) Priority live-scan candidates — official OFAC source, Intercepta result still unknown
+
+Use these first when looking for non-zero / differentiated live Intercepta evidence. They are prioritized because the addresses are explicitly present in dated OFAC SDN updates, not because this project already knows what Intercepta will return.
+
+**Do not pre-label these as High / Medium / Low in the UI.** The source establishes sanctions-list context on the cited date; the live Intercepta result remains unknown until scanned.
+
+Recommended operator order:
+
+1. `P1` `0xFda1Ec4A6178d4916b001a065422D31EBE5F62FF` — OFAC 2026-03-12
+2. `P2` `0xcB74874f1e06Fcf80A306e06e5379A44B488bA2D` — OFAC 2026-03-12
+3. `P3` `0x9Be599d7867f5E1a2D7Ec6dB9710dF2b98A15573` — OFAC 2026-03-12
+4. `P4` `0x76EA76CA4Eb727f18956aB93445a94c5280412B9` — OFAC 2026-03-12
+5. `P5` `0x0330070FD38Ec3bB94F58FA55D40368271E9e54A` — OFAC 2026-03-12
+6. `P6` `0xFb3eFf152ea55D1BfA04Dbdd509A80fD7b72cdEB` — OFAC 2026-03-12
+7. `P7` `0x8d79c73daae8630c88de372ba8f57592fa987607` — OFAC 2026-08-07
+8. `P8` `0xbb69e01921b17cd22080968bcc96ba6115da6062` — OFAC 2026-08-07
+9. `P9` `0xe05f529f5284d75624eba386cb716928c3b54a2a` — OFAC 2026-08-07
+10. `P10` `0x6b69e2a7545c166417a80c61a77562052bffa9c5` — OFAC 2026-08-07
+
+Official sources:
+- https://ofac.treasury.gov/recent-actions/20260312
+- https://ofac.treasury.gov/recent-actions/20260807
+
+### Scan-budget rule
+
+Do **not** blindly consume all ten candidates. Scan in priority order and stop once there are enough useful, differentiated live cases for the demo. A provider `404` / unavailable result is still useful as a fail-closed example, but it should not consume the whole candidate budget.
+
+Historical/delisted cases such as G1/G2 remain useful for gray-area/provider-coverage behavior, but they are no longer first-priority candidates for finding a stable sanctions-related live result.
+
 ## 1) High-risk candidates — current OFAC-listed ETH addresses
 
 ### Candidate H1
