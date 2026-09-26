@@ -1,0 +1,4 @@
+model.local.json
+state/
+workspaces/
+__pycache__/
