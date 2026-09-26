@@ -22,7 +22,7 @@ export type InterceptaTraitName = typeof INTERCEPTA_TRAIT_NAMES[number];
 export type InterceptaTrait = {
   risk: number;
   name: InterceptaTraitName;
-  txsCount: number;
+  txsCount?: number;
   description: string;
 };
 
@@ -62,14 +62,15 @@ export function parseInterceptaResponse(value: unknown): InterceptaResponse {
         return { kind: 'unknown', reason: 'invalid-response' };
       }
       if (!traitNames.has(trait.name)) { unknownTraitsCount++; continue; }
-      if (!Object.hasOwn(trait, 'risk') || !Object.hasOwn(trait, 'txsCount') || !Object.hasOwn(trait, 'description') ||
-          !isFiniteNumber(trait.risk) || !isFiniteNumber(trait.txsCount) || typeof trait.description !== 'string') {
+      if (!Object.hasOwn(trait, 'risk') || !Object.hasOwn(trait, 'description') ||
+          !isFiniteNumber(trait.risk) || (Object.hasOwn(trait, 'txsCount') && !isFiniteNumber(trait.txsCount)) || typeof trait.description !== 'string') {
         return { kind: 'unknown', reason: 'invalid-response' };
       }
       traits.push({
         risk: trait.risk,
         name: trait.name as InterceptaTraitName,
-        txsCount: trait.txsCount,
+        // Omission is a provider fact, never a synthetic zero. Ignore inherited fields.
+        ...(Object.hasOwn(trait, 'txsCount') ? { txsCount: trait.txsCount as number } : {}),
         description: trait.description,
       });
     }

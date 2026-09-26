@@ -17,3 +17,8 @@ it('accepts legacy shape but rejects secret or out-of-range diagnostic fields', 
   expect(isSchemaDiagnostic({ ...d, traitDiagnostic:{ ...d.traitDiagnostic, secret:'SECRET' } })).toBe(false);
   expect(isTraitDiagnostic({ ...d.traitDiagnostic, missingRiskCount:101 })).toBe(false);
 });
+
+it('counts omitted optional txsCount without marking a known trait malformed', () => {
+  expect(describeScanSchema({ toxicScore: 1, traits: [{ name: 'rug_pull', risk: 1, description: '' }] }).traitDiagnostic)
+    .toMatchObject({ knownTraitItems: 1, missingTxsCount: 1, invalidTxsCountTypeCount: 0, malformedItems: 0 });
+});

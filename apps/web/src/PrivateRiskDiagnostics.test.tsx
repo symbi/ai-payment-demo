@@ -81,3 +81,12 @@ it('renders bounded known-field failures and unknown counts without trait values
   expect(html).toContain('结构不符合要求的条目');
   expect(html).not.toContain('SECRET');
 });
+
+it('explains provider omission of optional txsCount while keeping HOLD', () => {
+  const html = render({ transport: 'received', httpStatus: 200, diagnosticCode: 'observed',
+    schemaDiagnostic: describeScanSchema({ toxicScore: 1, traits: [{ name: 'rug_pull', risk: 1, description: '' }] }),
+  }, 'live');
+  expect(html).toContain('txsCount 未提供（可选字段） / 类型错误');
+  expect(render({ diagnosticCode: 'observed' }, 'live')).toContain('服务方未提供时不补零');
+  expect(html).toContain('暂缓（HOLD）');
+});

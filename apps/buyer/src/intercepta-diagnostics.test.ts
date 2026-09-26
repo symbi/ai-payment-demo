@@ -55,3 +55,21 @@ it('reports which known fields are missing without leaking trait contents', asyn
   const result = await run({ toxicScore: 9, traits: [{name:'known_scammer'}, {name:'PRIVATE-TEXT'}] });
   expect(result).toMatchObject({ source:'unavailable', scan:{ diagnosticCode:'schema-unsupported', schemaDiagnostic:{traitDiagnostic:{missingRiskCount:1, missingTxsCount:1, missingDescriptionCount:1, knownTraitItems:1, unknownTraitItems:1}} } });
 });
+
+// Synthetic approximation of user-reported H2 shape, not a replay of a raw response.
+it('accepts two known traits with omitted txsCount and preserves HOLD', async () => {
+  const result = await run({ toxicScore: 7, traits: [
+    { name: 'known_scammer', risk: 1, description: 'PRIVATE-TEXT' },
+    { name: 'rug_pull', risk: 2, description: 'PRIVATE-TEXT' },
+  ] });
+  expect(result).toMatchObject({ source: 'live', decision: 'hold', scan: {
+    diagnosticCode: 'observed', traitsCount: 2, traitLabels: ['known_scammer', 'rug_pull'],
+    semantics: 'unverified', coverage: 'unverified',
+  } });
+});
+it.each(['3', {}, null])('holds an explicitly invalid optional txsCount %#', async txsCount => {
+  expect(await run({ toxicScore: 7, traits: [{ ...trait, txsCount }] })).toMatchObject({
+    source: 'unavailable', decision: 'hold', scan: { diagnosticCode: 'schema-unsupported',
+      schemaDiagnostic: { traitDiagnostic: { malformedItems: 1, missingTxsCount: 0, invalidTxsCountTypeCount: 1 } } },
+  });
+});

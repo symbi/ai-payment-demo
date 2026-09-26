@@ -38,6 +38,7 @@ function ScanDiagnostics({ risk }: { risk: RiskResult }) {
   const schema = isSchemaDiagnostic(scan?.schemaDiagnostic) ? scan.schemaDiagnostic : undefined;
   return <div className="private-risk-scan-diagnostics">
     <p><strong>扫描诊断</strong>：{reason}</p>
+    <p className="private-risk-muted">txsCount 为可选字段；服务方未提供时不补零，提供但类型错误时仍无法接受。</p>
     <dl>
       <div><dt>HTTP 状态</dt><dd>{scan?.httpStatus ?? '未记录'}</dd></div>
       {schema && <>
@@ -51,7 +52,7 @@ function ScanDiagnostics({ risk }: { risk: RiskResult }) {
           <div><dt>结构不符合要求的条目</dt><dd>{schema.traitDiagnostic.malformedItems}</dd></div>
           <div><dt>已知 / 未知标签条目</dt><dd>{schema.traitDiagnostic.knownTraitItems} / {schema.traitDiagnostic.unknownTraitItems}</dd></div>
           <div><dt>已知条目 risk 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingRiskCount} / {schema.traitDiagnostic.invalidRiskTypeCount}</dd></div>
-          <div><dt>已知条目 txsCount 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingTxsCount} / {schema.traitDiagnostic.invalidTxsCountTypeCount}</dd></div>
+          <div><dt>已知条目 txsCount 未提供（可选字段） / 类型错误</dt><dd>{schema.traitDiagnostic.missingTxsCount} / {schema.traitDiagnostic.invalidTxsCountTypeCount}</dd></div>
           <div><dt>已知条目 description 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingDescriptionCount} / {schema.traitDiagnostic.invalidDescriptionTypeCount}</dd></div>
         </>}
       </>}

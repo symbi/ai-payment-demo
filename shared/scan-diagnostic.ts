@@ -32,7 +32,7 @@ function describeTraits(items: unknown[]): TraitDiagnostic {
       ['txsCount', 'missingTxsCount', 'invalidTxsCountTypeCount'],
       ['description', 'missingDescriptionCount', 'invalidDescriptionTypeCount'],
     ] as const) {
-      if (!Object.hasOwn(t, key)) { d[missing]++; malformed = true; }
+      if (!Object.hasOwn(t, key)) { d[missing]++; if (key !== 'txsCount') malformed = true; }
       else if (key === 'description' ? typeof t[key] !== 'string' : typeof t[key] !== 'number' || !Number.isFinite(t[key])) { d[invalid]++; malformed = true; }
     }
     if (malformed) d.malformedItems++;

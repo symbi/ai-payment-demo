@@ -32,7 +32,7 @@ it.each(INTERCEPTA_TRAIT_NAMES)('accepts documented trait name %s', name => {
   });
 });
 
-it.each(['risk', 'name', 'txsCount', 'description'] as const)('rejects a trait missing %s', field => {
+it.each(['risk', 'name', 'description'] as const)('rejects a trait missing %s', field => {
   const trait: Record<string, unknown> = { ...validTrait };
   delete trait[field];
   expect(parseInterceptaResponse({ toxicScore: 0, traits: [trait] })).toEqual(unknown);
@@ -41,7 +41,7 @@ it.each(['risk', 'name', 'txsCount', 'description'] as const)('rejects a trait m
 it.each([
   { risk: '12' }, { risk: NaN }, { risk: Infinity },
   { name: null },
-  { txsCount: '3' }, { txsCount: -Infinity },
+  { txsCount: '3' }, { txsCount: {} }, { txsCount: null }, { txsCount: undefined }, { txsCount: -Infinity },
   { description: null }, { description: 3 },
 ])('rejects a trait with invalid field types or unknown name %#', change => {
   expect(parseInterceptaResponse({ toxicScore: 0, traits: [{ ...validTrait, ...change }] })).toEqual(unknown);
@@ -68,4 +68,16 @@ it.each([{ name: 'new_trait' }, { name: 'new_trait', risk: 'changed', txsCount: 
 });
 it.each([{ name: '' }, { name: ' ' }, { name: 'a'.repeat(121) }, Object.fromEntries([['name','new_trait'], ...Array.from({length:20},(_,i)=>['key'+i,0])])])('rejects unbounded or nameless unknown variants', trait => {
   expect(parseInterceptaResponse({ toxicScore: 4, traits: [trait] })).toEqual(unknown);
+});
+
+it('accepts omitted optional txsCount without adding a value', () => {
+  const { txsCount, ...trait } = validTrait;
+  const result = parseInterceptaResponse({ toxicScore: 1, traits: [trait] });
+  expect(result).toEqual({ kind: 'observed', toxicScore: 1, traits: [trait] });
+  if (result.kind === 'observed') expect(Object.hasOwn(result.traits[0], 'txsCount')).toBe(false);
+});
+it('does not copy inherited txsCount', () => {
+  const { txsCount, ...fields } = validTrait;
+  const trait = Object.assign(Object.create({ txsCount: 'untrusted' }), fields);
+  expect(parseInterceptaResponse({ toxicScore: 1, traits: [trait] })).toEqual({ kind: 'observed', toxicScore: 1, traits: [fields] });
 });
