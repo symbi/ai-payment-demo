@@ -8,6 +8,6 @@ The following are user-supplied, unverified association clues:
 
 Only syntax and uniqueness can be checked offline. These entries do not claim checksum validation, source validation, API availability, mixer attribution, or guaranteed gray/safe outcomes.
 
-Full numeric trait-detail preservation is not yet released. Private-side users should wait for that version before manually scanning new candidates so numeric details are retained.
+User report (2026-09-27): U1 was already scanned once on the private side and returned Toxic Score 0 / traits 0. This report was not independently verified here or imported into a local journal; it is not a safety verdict. Do not repeat U1 merely because this checkout has no saved record. U2 and U3 remain unknown. Numeric trait-detail preservation is deferred; existing missing values are not backfilled.
 
 Private-configured quota and the user page remain authoritative; this document does not change quota, scan guards, batch behavior, request transport, or historical records.

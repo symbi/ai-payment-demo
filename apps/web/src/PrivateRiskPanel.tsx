@@ -1,3 +1,4 @@
+import { PolicySandbox } from './PolicySandbox.tsx';
 import { useState } from 'react';
 import type { PrivateRiskPanelProps, PrivateScanRecord, PrivateScanStatus } from '../../../shared/private-risk.ts';
 import { PRIVATE_RISK_CANDIDATES, privateCandidate } from '../../../shared/private-risk.ts';
@@ -266,5 +267,6 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
         </details>
       </section>
     </div>
+    <PolicySandbox />
   </main>;
 }

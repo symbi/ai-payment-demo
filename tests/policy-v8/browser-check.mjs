@@ -86,20 +86,20 @@ try{
  checks.push('English hero, intent default, truthful unassessed state; disclosures collapsed');
  async function outcome(id,decision){
   await recipient.selectOption(id);const count=attempted.length;
-  await expect(page.getByText('HOLD',{exact:true}).first()).toBeVisible();
+  await expect(page.locator('.private-risk-policy').getByText('HOLD',{exact:true}).first()).toBeVisible();
   assert.equal(attempted.length,count,'selection must not scan');
-  await assess.click();await expect(page.getByText(decision,{exact:true}).first()).toBeVisible();
+  await assess.click();await expect(page.locator('.private-risk-policy').getByText(decision,{exact:true}).first()).toBeVisible();
   await expect(page.getByText(/NOT.CONNECTED|Not connected/).first()).toBeVisible();
   assert.equal(attempted.length,count+1);await expect(assess).toBeDisabled();
  }
  await outcome('H1','ALLOW');
- await amount.fill('');await expect(page.getByText('HOLD',{exact:true}).first()).toBeVisible();
- await amount.fill('0.005');await expect(page.getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,1);
+ await amount.fill('');await expect(page.locator('.private-risk-policy').getByText('HOLD',{exact:true}).first()).toBeVisible();
+ await amount.fill('0.005');await expect(page.locator('.private-risk-policy').getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,1);
  checks.push('empty live evidence allows in policy only; invalid amount removes allow without POST');
  await outcome('H2','ALLOW WITH LIMIT');
  await expect(page.getByText(/0\.001/).first()).toBeVisible();
  await page.screenshot({path:new URL('limited-desktop.png',output).pathname,fullPage:true});
- await amount.fill('0.001');await expect(page.getByText('ALLOW WITH LIMIT',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,2);
+ await amount.fill('0.001');await expect(page.locator('.private-risk-policy').getByText('ALLOW WITH LIMIT',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,2);
  await outcome('G1','DENY');
  await expect(page.getByText('sanction_address',{exact:true}).first()).toBeVisible();
  checks.push('same score50 mixer limits and sanction denies; cap changes never execute');
@@ -110,7 +110,7 @@ try{
  await outcome('G2','HOLD');await outcome('L1','HOLD');
  checks.push('404 and unknown evidence hold; desktop/mobile no overflow');
  await page.reload();await expect(page.getByRole('heading',{name:'Agent Payment Guard',exact:true})).toBeVisible();
- await expect(page.getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,5);
+ await expect(page.locator('.private-risk-policy').getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,5);
  checks.push('refresh reads saved evidence without repeat assessment');
  showSavedGrant=true;await page.reload();
  await advanced.locator(':scope > summary').click();
