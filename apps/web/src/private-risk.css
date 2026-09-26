@@ -38,7 +38,7 @@
 .private-risk-panel select,.private-risk-panel input{width:100%;min-height:44px;margin-top:6px;border:1px solid #486758;border-radius:8px;background:#08130f;color:var(--private-risk-ink);padding:9px 11px;font:inherit}
 .private-risk-panel button{min-height:44px;border:1px solid #466556;border-radius:8px;background:#14261f;color:var(--private-risk-ink);padding:9px 13px;font:inherit;font-weight:750;cursor:pointer}
 .private-risk-panel button:disabled{cursor:not-allowed;opacity:.5}
-.private-risk-panel button:focus-visible,.private-risk-panel select:focus-visible,.private-risk-panel input:focus-visible,.private-risk-panel summary:focus-visible,.task-authorization-disclosure summary:focus-visible{outline:3px solid var(--private-risk-green);outline-offset:3px}
+.private-risk-panel button:focus-visible,.private-risk-panel select:focus-visible,.private-risk-panel input:focus-visible,.private-risk-panel summary:focus-visible,.task-authorization-disclosure summary:focus-visible{outline:3px solid var(--private-risk-green,#69e6a6);outline-offset:3px}
 .private-risk-primary{width:100%;margin-top:18px;border-color:#70e8aa!important;background:linear-gradient(110deg,#71e9ad,#4fc88f)!important;color:#062116!important;font-size:15px!important}
 .private-risk-agent{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--private-risk-line);margin-bottom:15px;padding-bottom:12px;font-size:13px}
 .private-risk-agent span,.private-risk-label{display:block;color:var(--private-risk-muted);font-size:11px;font-weight:750;letter-spacing:.04em}

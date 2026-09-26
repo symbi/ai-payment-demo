@@ -55,6 +55,33 @@ try{
  await expect(technical).toHaveCount(1);await expect(advanced).toHaveCount(1);
  assert.equal(await technical.evaluate(el=>el.open),false);assert.equal(await advanced.evaluate(el=>el.open),false);
  assert.equal(await advanced.evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(14, 29, 23)','private theme must override legacy disclosure styling');
+ const focusOutlines=[];
+ async function keyboardFocus(summary){
+  for(let step=0;step<30;step++){
+   await page.keyboard.press('Tab');
+   if(await summary.evaluate(el=>el===document.activeElement))return;
+  }
+  assert.fail('keyboard navigation did not reach '+await summary.innerText());
+ }
+ async function visibleOutline(summary){
+  await expect(summary).toBeFocused();
+  const style=await summary.evaluate(el=>{const s=getComputedStyle(el);return {name:el.textContent,style:s.outlineStyle,width:s.outlineWidth,color:s.outlineColor};});
+  focusOutlines.push(style);
+ }
+ const focusScanCount=attempted.length, advancedSummary=advanced.locator(':scope > summary');
+ await keyboardFocus(advancedSummary);await visibleOutline(advancedSummary);
+ await page.keyboard.press('Enter');
+ const manageSummary=page.locator('summary').filter({hasText:/^Manage policy$/});
+ await keyboardFocus(manageSummary);await visibleOutline(manageSummary);
+ assert.equal(attempted.length,focusScanCount,'keyboard disclosures must not scan');
+ await writeFile(new URL('focus-receipt.json',output),JSON.stringify(focusOutlines,null,2)+'\n');
+ for(const outline of focusOutlines){
+  assert.notEqual(outline.style,'none',outline.name+' focus outline missing');
+  assert.ok(parseFloat(outline.width)>0,outline.name+' focus outline has no width');
+  assert.ok(outline.color!=='transparent'&&!/rgba\([^)]*,\s*0\)$/.test(outline.color),outline.name+' focus outline is transparent');
+ }
+ await keyboardFocus(advancedSummary);await page.keyboard.press('Enter');
+ checks.push('keyboard focus visible for Advanced and Manage disclosures; no scan');
  await expect(page.getByText('LIVE',{exact:true})).toHaveCount(0);
  checks.push('English hero, intent default, truthful unassessed state; disclosures collapsed');
  async function outcome(id,decision){
