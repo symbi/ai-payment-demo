@@ -1,32 +1,37 @@
+import { useState } from 'react';
 import type { PrivateRiskPanelProps, PrivateScanRecord, PrivateScanStatus } from '../../../shared/private-risk.ts';
 import { PRIVATE_RISK_CANDIDATES, privateCandidate } from '../../../shared/private-risk.ts';
 import type { RiskResult } from '../../../shared/contracts.ts';
 import { isSchemaDiagnostic } from '../../../shared/scan-diagnostic.ts';
+import {
+  evaluateLivePaymentPolicy,
+  LIVE_PAYMENT_POLICY_NAME,
+  LIVE_PAYMENT_POLICY_REVISION,
+  type LivePaymentPolicyResult,
+} from '../../../shared/live-payment-policy.ts';
 import { RiskReceiptDownload } from './RiskReceiptDownload.tsx';
 import './private-risk.css';
-
-const judgmentReason = '仍需确认返回字段的含义和适用网络，暂不能据此许可付款。这表示依据不足，不表示地址已认定危险。我们不另算综合分。';
 
 function selectedRecord(status: PrivateScanStatus | null, candidateId: PrivateRiskPanelProps['selectedId']): PrivateScanRecord | undefined {
   return status?.records.find(record => record.candidateId === candidateId);
 }
 
 const diagnosticReasons = {
-  'http-error': '扫描服务返回非成功 HTTP 状态；尚无可用扫描证据。',
-  'schema-unsupported': '已收到响应，但核心字段结构尚不受支持，不能提取有效扫描证据。',
-  'body-invalid': '响应正文无法按受支持的 JSON 格式读取；未展示原始正文。',
-  timeout: '扫描请求超时；没有自动重试。',
-  'transport-error': '请求传输失败；尚无可用扫描证据。',
-  configuration: '本地扫描配置或地址检查未通过。',
-  observed: '已提取支持的原始字段；风险含义和网络覆盖仍待确认。',
+  'http-error': 'The scan service returned a non-success HTTP status. No usable evidence was saved.',
+  'schema-unsupported': 'A response arrived, but its core schema is unsupported.',
+  'body-invalid': 'The response body could not be read as supported JSON. Raw content is not shown.',
+  timeout: 'The scan request timed out. No automatic retry was made.',
+  'transport-error': 'The request transport failed. No usable evidence was saved.',
+  configuration: 'Local scan configuration or address validation failed.',
+  observed: 'Supported raw fields were extracted. Score meaning and network coverage remain unverified.',
 };
 const legacyReasons = new Map([
   ['Invalid scan address.', diagnosticReasons.configuration],
   ['API key unavailable.', diagnosticReasons.configuration],
-  ['Scan service unavailable.', '旧记录显示扫描服务不可用；未记录 HTTP 状态。'],
+  ['Scan service unavailable.', 'The saved record says the scan service was unavailable; no HTTP status was recorded.'],
   ['Unsupported scan response. Review required.', diagnosticReasons['schema-unsupported']],
   ['Scan timed out. No automatic retry.', diagnosticReasons.timeout],
-  ['Scan unavailable. Review required.', '旧记录显示扫描不可用；未记录更详细的失败类别。'],
+  ['Scan unavailable. Review required.', 'The saved record says the scan was unavailable; no more specific category was recorded.'],
 ]);
 
 function ScanDiagnostics({ risk }: { risk: RiskResult }) {
@@ -34,123 +39,224 @@ function ScanDiagnostics({ risk }: { risk: RiskResult }) {
   const reason = scan?.diagnosticCode && Object.hasOwn(diagnosticReasons, scan.diagnosticCode)
     ? diagnosticReasons[scan.diagnosticCode]
     : risk.reasons.map(item => legacyReasons.get(item)).find(Boolean)
-      ?? (risk.source === 'live' ? diagnosticReasons.observed : '旧记录未保存详细诊断；不推断失败原因。');
+      ?? (risk.source === 'live' ? diagnosticReasons.observed : 'The legacy record contains no bounded diagnostic category.');
   const schema = isSchemaDiagnostic(scan?.schemaDiagnostic) ? scan.schemaDiagnostic : undefined;
   return <div className="private-risk-scan-diagnostics">
-    <p><strong>扫描诊断</strong>：{reason}</p>
-    <p className="private-risk-muted">txsCount 为可选字段；服务方未提供时不补零，提供但类型错误时仍无法接受。</p>
+    <p><strong>Diagnostic</strong>: {reason}</p>
+    <p className="private-risk-muted">txsCount is optional. Missing values remain missing; invalid values are not accepted.</p>
     <dl>
-      <div><dt>HTTP 状态</dt><dd>{scan?.httpStatus ?? '未记录'}</dd></div>
+      <div><dt>HTTP status</dt><dd>{scan?.httpStatus ?? 'Not recorded'}</dd></div>
+      <div><dt>Total observed traits</dt><dd>{scan?.traitsCount ?? 'Not recorded'}</dd></div>
+      <div><dt>Unknown trait count</dt><dd>{scan?.unknownTraitsCount ?? 'Not recorded'}</dd></div>
+      <div><dt>Ignored additional fields</dt><dd>{scan?.additionalFieldsCount ?? 'Not recorded'}</dd></div>
+      <div><dt>Displayed known labels</dt><dd>{scan?.traitLabels?.length ?? 'Not recorded'}</dd></div>
       {schema && <>
-        <div><dt>顶层已知字段名</dt><dd>{schema.topLevelKeys.join('、') || '未观察到支持字段'}</dd></div>
-        <div><dt>其他顶层字段数量</dt><dd>{schema.otherKeysCount}</dd></div>
-        <div><dt>toxicScore 字段类型</dt><dd>{schema.toxicScoreType}</dd></div>
-        <div><dt>traits 字段类型</dt><dd>{schema.traitsType}</dd></div>
-        {schema.traitsCount !== undefined && <div><dt>响应 traits 数组长度</dt><dd>{schema.traitsCount}</dd></div>}
+        <div><dt>Known top-level fields</dt><dd>{schema.topLevelKeys.join(', ') || 'None observed'}</dd></div>
+        <div><dt>Other top-level field count</dt><dd>{schema.otherKeysCount}</dd></div>
+        <div><dt>toxicScore field type</dt><dd>{schema.toxicScoreType}</dd></div>
+        <div><dt>traits field type</dt><dd>{schema.traitsType}</dd></div>
+        {schema.traitsCount !== undefined && <div><dt>Response traits length</dt><dd>{schema.traitsCount}</dd></div>}
         {schema.traitDiagnostic && <>
-          <div><dt>检查的条目 / 总数</dt><dd>{schema.traitDiagnostic.inspectedItems} / {schema.traitDiagnostic.totalItems}</dd></div>
-          <div><dt>结构不符合要求的条目</dt><dd>{schema.traitDiagnostic.malformedItems}</dd></div>
-          <div><dt>已知 / 未知标签条目</dt><dd>{schema.traitDiagnostic.knownTraitItems} / {schema.traitDiagnostic.unknownTraitItems}</dd></div>
-          <div><dt>已知条目 risk 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingRiskCount} / {schema.traitDiagnostic.invalidRiskTypeCount}</dd></div>
-          <div><dt>已知条目 txsCount 未提供（可选字段） / 类型错误</dt><dd>{schema.traitDiagnostic.missingTxsCount} / {schema.traitDiagnostic.invalidTxsCountTypeCount}</dd></div>
-          <div><dt>已知条目 description 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingDescriptionCount} / {schema.traitDiagnostic.invalidDescriptionTypeCount}</dd></div>
+          <div><dt>Inspected / total items</dt><dd>{schema.traitDiagnostic.inspectedItems} / {schema.traitDiagnostic.totalItems}</dd></div>
+          <div><dt>Malformed items</dt><dd>{schema.traitDiagnostic.malformedItems}</dd></div>
+          <div><dt>Known / unknown label items</dt><dd>{schema.traitDiagnostic.knownTraitItems} / {schema.traitDiagnostic.unknownTraitItems}</dd></div>
+          <div><dt>Known items with missing / invalid risk</dt><dd>{schema.traitDiagnostic.missingRiskCount} / {schema.traitDiagnostic.invalidRiskTypeCount}</dd></div>
+          <div><dt>Optional txsCount missing / invalid</dt><dd>{schema.traitDiagnostic.missingTxsCount} / {schema.traitDiagnostic.invalidTxsCountTypeCount}</dd></div>
+          <div><dt>Description missing / invalid</dt><dd>{schema.traitDiagnostic.missingDescriptionCount} / {schema.traitDiagnostic.invalidDescriptionTypeCount}</dd></div>
         </>}
       </>}
     </dl>
-    {schema && <p className="private-risk-muted">结构摘要仅包含字段类型和数量；不显示未知字段名、自由文本或原始响应。</p>}
+    {schema && <p className="private-risk-muted">The schema summary contains bounded field types and counts only. Unknown names, free text and raw responses are not shown.</p>}
   </div>;
 }
 
-function renderScan(risk: RiskResult) {
-  const scan = risk.scan;
-  if (!scan || risk.source !== 'live' || scan.transport === 'unavailable') return <p className="private-risk-muted">未取得有效扫描证据。</p>;
-  const score = scan.toxicScore === undefined ? '未确认' : String(scan.toxicScore);
-  const count = scan.traitsCount === undefined ? '未确认' : String(scan.traitsCount);
-  const labels = scan.traitLabels ?? [];
-  return <div className="private-risk-scan-facts">
-    <dl>
-      <div><dt>Intercepta 原始 toxicScore</dt><dd>{score}</dd></div>
-      <div><dt>返回的风险条目总数</dt><dd>{count}</dd></div>
-      <div><dt>展示的已知标签</dt><dd>{labels.length ? labels.join('、') : scan.traitsCount === 0 ? '未返回标签，不代表安全' : '没有可展示的已知标签'}</dd></div>
-      <div><dt>未知标签条目数量</dt><dd>{scan.unknownTraitsCount ?? '旧记录未记录'}</dd></div>
-      <div><dt>忽略的新增字段数量</dt><dd>{scan.additionalFieldsCount ?? '旧记录未记录'}</dd></div>
-      <div><dt>本地请求网络</dt><dd>{scan.requestedNetwork}（不代表供应商已确认覆盖）</dd></div>
-    </dl>
-    <p className="private-risk-muted">分数量纲待确认，不换算为百分制或风险等级；0 不等于安全。总数包含未知标签条目；仅展示已知的允许标签。</p>
-    {scan.traitsCount !== undefined && labels.length < scan.traitsCount
-      ? <p className="private-risk-muted">当前展示 {labels.length} 个已知标签；未知标签或展示数量上限可能导致省略，不代表全量。</p> : null}
-  </div>;
+function usableLiveEvidence(record: PrivateScanRecord | undefined, loading: boolean) {
+  const scan = record?.risk?.scan;
+  return !loading && record?.state === 'completed' && record.risk?.source === 'live' &&
+    scan?.transport === 'received' && scan.httpStatus === 200 &&
+    typeof scan.toxicScore === 'number' && Number.isFinite(scan.toxicScore) &&
+    typeof scan.traitsCount === 'number' && Array.isArray(scan.traitLabels) &&
+    Object.hasOwn(scan, 'unknownTraitsCount');
 }
 
-function Result({ record }: { record: PrivateScanRecord }) {
-  if (record.state === 'pending') return <div className="private-risk-state private-risk-pending"><strong>尚未确认</strong><p>原记录处于 pending，结果尚未确认；不宣称未请求，也不自动重试。</p><p>暂缓（HOLD）：依据不足</p></div>;
-  if (!record.risk) return <div className="private-risk-state private-risk-unavailable"><strong>未取得有效证据</strong><p>这次记录没有可用的真实扫描证据，不能据此判断地址安全或危险。</p><p>旧记录未保存详细诊断；不推断失败原因。</p><p>暂缓（HOLD）：依据不足</p></div>;
-  const risk = record.risk;
-  return <div className="private-risk-result" aria-live="polite">
-    <section aria-labelledby="private-risk-intercepta-title">
-      <h3 id="private-risk-intercepta-title">Intercepta 原始结果</h3>
-      <p className="private-risk-source">来源：{risk.source === 'live' ? '真实API返回（本机保存的上次结果）' : '未取得有效证据'}</p>
-      <ScanDiagnostics risk={risk} />
-      {renderScan(risk)}
-      <p className="private-risk-time"><strong>本地接收时间</strong>：{risk.checkedAt}（不是供应商更新时间；供应商更新时间/覆盖未知）</p>
-    </section>
-    <section aria-labelledby="private-risk-judgment-title">
-      <h3 id="private-risk-judgment-title">我们的判断</h3>
-      <p className="private-risk-hold">暂缓（HOLD）：依据不足</p>
-      <p>{judgmentReason}</p>
-      <details><summary>查看本地检查说明</summary><p>只展示受支持的诊断类别和结构事实；已有记录不会触发重新扫描。</p></details>
-    </section>
-  </div>;
+function Evidence({ record, live }: { record: PrivateScanRecord | undefined; live: boolean }) {
+  const scan = record?.risk?.scan;
+  const labels = scan?.traitLabels ?? [];
+  return <>
+    <div className="private-risk-evidence-head">
+      <div><span className="private-risk-label">Toxic Score</span><strong>{scan?.toxicScore ?? 'Missing'}</strong></div>
+      <dl>
+        <div><dt>Evidence</dt><dd>{scan?.traitsCount ?? 'Missing'}</dd></div>
+        <div><dt>Source</dt><dd>{live ? 'LIVE' : 'Unavailable'}</dd></div>
+      </dl>
+    </div>
+    <div className="private-risk-traits" aria-label="Observed risk traits">
+      <span className="private-risk-label">Traits</span>
+      <div>{labels.length
+        ? labels.map(label => <span className="private-risk-chip" key={label}>{label}</span>)
+        : <span className="private-risk-muted">{scan?.traitsCount === 0 ? 'No labels returned; zero is not a safety grade.' : 'Missing'}</span>}</div>
+    </div>
+    {!live && <p className="private-risk-muted">Evidence unavailable</p>}
+  </>;
+}
+
+const hardTraits = new Set(['sanction_address', 'blacklist', 'known_scammer']);
+const moderateTraits = new Set([
+  'mixer_transfers', 'non_kyc_transfers', 'sanction_address_communication',
+  'fake_phishing_transfer', 'fake_phishing_contract_communication', 'rug_pull_trader',
+]);
+
+function observedTrait(record: PrivateScanRecord | undefined, allowed: ReadonlySet<string>) {
+  return record?.risk?.scan?.traitLabels?.find(label => allowed.has(label));
+}
+
+function decisionCopy(result: LivePaymentPolicyResult, record: PrivateScanRecord | undefined) {
+  switch (result.reasonCode) {
+    case 'invalid_amount': return {
+      why: 'Enter a positive USDC amount with no more than six decimal places.',
+      next: 'Correct the payment intent before requesting evidence.',
+    };
+    case 'evidence_unavailable': return {
+      why: 'Usable live risk evidence is not available for this payment intent.',
+      next: 'Await evidence or keep the payment paused before signing.',
+    };
+    case 'unknown_traits': return {
+      why: 'Some provider evidence is not yet understood.',
+      next: 'Human review is required before any signing or execution.',
+    };
+    case 'hard_deny_trait': {
+      const trait = observedTrait(record, hardTraits) ?? 'a hard-deny trait';
+      return {
+        why: `Intercepta reported ${trait}. The project policy applies its deny rule.`,
+        next: 'Payment is blocked before signing.',
+      };
+    }
+    case 'incomplete_traits': return {
+      why: 'The visible trait list is incomplete, so the project rule cannot permit payment.',
+      next: 'Human review is required before any signing or execution.',
+    };
+    case 'moderate_trait': {
+      const trait = observedTrait(record, moderateTraits) ?? 'restricted evidence';
+      return {
+        why: `Intercepta reported ${trait}. The project policy caps demo exposure at 0.001 USDC.`,
+        next: result.amountWithinLimit
+          ? 'The intent is within the 0.001 USDC demo cap; execution remains disconnected.'
+          : 'Reduce the amount to 0.001 USDC or do not proceed at the current amount.',
+      };
+    }
+    case 'no_traits': return {
+      why: 'The complete live response contains no observed traits. Toxic Score remains raw evidence only.',
+      next: 'Eligible under project demo rules; execution remains disconnected.',
+    };
+    case 'unmapped_trait': return {
+      why: 'Observed evidence has no permitting rule in this project policy.',
+      next: 'Human review is required before any signing or execution.',
+    };
+    default: return {
+      why: 'The project policy did not produce a supported permitting reason.',
+      next: 'Keep the payment paused before signing or execution.',
+    };
+  }
+}
+
+function displayDecision(decision: LivePaymentPolicyResult['decision']) {
+  return decision === 'ALLOW_WITH_LIMIT' ? 'ALLOW WITH LIMIT' : decision;
 }
 
 export function PrivateRiskPanel({ selectedId, status, loading, message, onSelect, onScan, onRefresh }: PrivateRiskPanelProps) {
+  const [amountUsdc, setAmountUsdc] = useState('0.005');
   const candidate = privateCandidate(selectedId);
   const record = selectedRecord(status, selectedId);
+  const recordForPolicy = loading || !status ? undefined : record;
+  const policy = evaluateLivePaymentPolicy(recordForPolicy, amountUsdc);
+  const copy = decisionCopy(policy, recordForPolicy);
+  const liveEvidence = usableLiveEvidence(recordForPolicy, loading);
   const hasPending = !!status?.records.some(item => item.state === 'pending');
   const exhausted = status ? status.usedRequests >= status.maxRequests : false;
-  const scanDisabled = loading || !status || !status.ready || !!record || exhausted || hasPending;
-  const scanDisabledReason = !status ? '尚未取得地址评估状态。'
-    : !status.ready ? status.message || '地址评估尚未就绪。'
-      : hasPending ? '已有扫描处于 pending，先查询已有结果。'
-        : exhausted ? `扫描次数已用尽（${status.usedRequests}/${status.maxRequests}）。`
-          : record ? '该地址已有记录，不再重复扫描。' : '';
+  const invalidAmount = policy.reasonCode === 'invalid_amount';
+  const scanDisabled = loading || !status || !status.ready || !!record || exhausted || hasPending || invalidAmount;
+  const scanDisabledReason = invalidAmount ? 'Enter a valid amount before assessment.'
+    : !status ? 'Address assessment status is not available.'
+      : !status.ready ? 'Address assessment is not ready on this device.'
+        : hasPending ? 'A scan is pending. Refresh the saved result before another request.'
+          : exhausted ? `Attempt allowance used (${status.usedRequests}/${status.maxRequests}).`
+            : record ? 'A saved record exists for this address; it is assessed locally without rescanning.' : '';
 
-  if (!candidate) return <main className="private-risk-panel"><p className="private-risk-message" role="alert">未找到选中的候选地址。</p></main>;
+  if (!candidate) return <main className="private-risk-panel"><p className="private-risk-message" role="alert">The selected recipient was not found.</p></main>;
   return <main className="private-risk-panel" aria-labelledby="private-risk-title">
     <header className="private-risk-hero">
-      <p className="private-risk-kicker">地址风险评估</p>
-      <h1 id="private-risk-title">评估收款方地址</h1>
-      <p>收款方地址风险查询可由人或 Agent 使用；候选只是待扫描线索，不是获准收款地址。</p>
+      <div>
+        <p className="private-risk-kicker">AUTONOMOUS PAYMENT CONTROL</p>
+        <h1 id="private-risk-title">Agent Payment Guard</h1>
+        <p>Screen recipients before autonomous payments.</p>
+      </div>
+      <div className="private-risk-badges" aria-label="Demo status">
+        <span className={liveEvidence ? 'private-risk-badge is-live' : 'private-risk-badge'}>Intercepta {liveEvidence ? 'Live' : record ? 'Unavailable' : 'Awaiting'}</span>
+        <span className="private-risk-badge">Policy v1</span>
+      </div>
     </header>
 
     <div className="private-risk-flow">
-      <section className="private-risk-card" aria-labelledby="private-risk-select-title">
-        <div className="private-risk-step"><span>01</span><div><p>收款方</p><h2 id="private-risk-select-title">选择真实候选地址</h2></div></div>
-        <label htmlFor="private-risk-candidate">真实候选地址</label>
+      <section className="private-risk-card private-risk-intent" aria-labelledby="private-risk-intent-title">
+        <div className="private-risk-step"><span>01</span><div><p>STEP 01</p><h2 id="private-risk-intent-title">Payment intent</h2></div></div>
+        <div className="private-risk-agent"><span>Agent</span><strong>Report Buyer 01</strong></div>
+        <label htmlFor="private-risk-candidate">Recipient</label>
         <select id="private-risk-candidate" value={selectedId} disabled={loading} onChange={event => onSelect(event.target.value as PrivateRiskPanelProps['selectedId'])}>
-          {PRIVATE_RISK_CANDIDATES.map(item => <option key={item.id} value={item.id}>{item.id} · {item.context}</option>)}
+          {PRIVATE_RISK_CANDIDATES.map(item => <option key={item.id} value={item.id}>Case {item.id}</option>)}
         </select>
-        <div className="private-risk-address"><strong>{candidate.id}</strong><code>{candidate.address}</code><p>{candidate.context}</p></div>
-        <p className="private-risk-note">候选说明是用户提供的来源线索，尚未核验，不是 Intercepta 扫描结论；只有下方保存的 API 返回属于实测结果。页面不填写 API key，不要求钱包连接、身份认证、Agent 预算或限额。</p>
-      </section>
-
-      <section className="private-risk-card" aria-labelledby="private-risk-result-title">
-        <div className="private-risk-step"><span>02</span><div><p>评估</p><h2 id="private-risk-result-title">扫描与查询</h2></div></div>
-        <div className="private-risk-actions">
-          <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>扫描这个真实地址（消耗1次）</button>
-          <button type="button" disabled={loading} onClick={onRefresh}>查询已有结果（不重新扫描）</button>
+        <code className="private-risk-address">{candidate.address}</code>
+        <div className="private-risk-intent-grid">
+          <label htmlFor="private-risk-amount">Amount<input id="private-risk-amount" inputMode="decimal" value={amountUsdc} disabled={loading} onChange={event => setAmountUsdc(event.target.value)} /></label>
+          <div><span className="private-risk-label">Asset</span><strong>USDC</strong></div>
+          <div><span className="private-risk-label">Network</span><strong>Ethereum Mainnet for screening</strong><small>eip155:1 · Coverage: unverified</small></div>
         </div>
-        <p className="private-risk-note">{loading ? '正在处理，请等待结果…' : scanDisabledReason || '每个地址只扫描一次，不自动重试。'}</p>
-        <p className="private-risk-note">本轮扫描用量：{status ? `已用 ${status.usedRequests} / 最多 ${status.maxRequests} 次（失败也计入）` : '尚未取得'}</p>
-        <p className="private-risk-note">只能在私人电脑独立启动这个入口；始终只扫描，不签名、不付款。金额/Agent 限额不在此次地址扫描中。</p>
-        {message && <p className="private-risk-message" role="alert">{message}</p>}
+        <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>Assess Payment</button>
+        <p className="private-risk-note">Screened before any signing or execution.</p>
+        <p className="private-risk-status-copy">{loading ? 'Assessment in progress…' : scanDisabledReason || 'Manual one-address assessment. One attempt; no automatic retry.'}</p>
+        {message && <p className="private-risk-message" role="status">Address assessment state changed. Review the saved status and technical details.</p>}
       </section>
 
-      <section className="private-risk-card" aria-labelledby="private-risk-current-title">
-        <div className="private-risk-step"><span>03</span><div><p>结果和原因</p><h2 id="private-risk-current-title">当前记录</h2></div></div>
-        {!record ? <div className="private-risk-empty"><strong>{status ? '本机暂无该地址记录' : '尚未取得扫描记录'}</strong><p>{status ? '此记录库中没有该地址的结果。' : '先查询私人电脑的已有记录，不能据此断定此前没有扫描。'}不填充 0，也不生成合成结果。</p></div> : <Result record={record} />}
-        <div className="private-risk-actions"><RiskReceiptDownload status={status} candidateId={selectedId} /></div>
-        <p className="private-risk-note">摘要来自已有记录，下载不会重新扫描。</p>
+      <section className="private-risk-card private-risk-evidence" aria-labelledby="private-risk-evidence-title">
+        <div className="private-risk-step"><span>02</span><div><p>STEP 02</p><h2 id="private-risk-evidence-title">Intercepta evidence</h2></div></div>
+        <Evidence record={recordForPolicy} live={liveEvidence} />
+        <details className="private-risk-details">
+          <summary>Technical details</summary>
+          {recordForPolicy?.risk ? <ScanDiagnostics risk={recordForPolicy.risk} /> : <p>No bounded diagnostics are available for this recipient.</p>}
+          <p>Attempts used: {status ? `${status.usedRequests} / ${status.maxRequests}` : 'Not available'}. Failed attempts count; there is no automatic retry.</p>
+          <button type="button" disabled={loading} onClick={onRefresh}>Refresh saved records</button>
+        </details>
+      </section>
+
+      <section className={`private-risk-card private-risk-policy decision-${policy.decision.toLowerCase()}`} aria-labelledby="private-risk-policy-title">
+        <div className="private-risk-step"><span>03</span><div><p>STEP 03</p><h2 id="private-risk-policy-title">Project policy</h2></div></div>
+        <p className="private-risk-policy-name">{LIVE_PAYMENT_POLICY_NAME}</p>
+        <p className="private-risk-revision">{LIVE_PAYMENT_POLICY_REVISION}</p>
+        <strong className="private-risk-decision">{displayDecision(policy.decision)}</strong>
+        <dl className="private-risk-policy-facts">
+          <div><dt>Requested</dt><dd>{amountUsdc || 'Missing'} USDC</dd></div>
+          <div><dt>Policy cap</dt><dd>{policy.capUsdc ? `${policy.capUsdc} USDC` : 'Not applicable'}</dd></div>
+          <div><dt>Within limit</dt><dd>{policy.amountWithinLimit ? 'Yes' : 'No'}</dd></div>
+          <div><dt>Reason code</dt><dd>{policy.reasonCode}</dd></div>
+        </dl>
+        <div className="private-risk-why"><span className="private-risk-label">Why</span><p>{copy.why}</p></div>
+        <p className="private-risk-policy-boundary">Project-defined demo rules use Intercepta observations. This is not an Intercepta verdict or execution permission.</p>
+      </section>
+
+      <section className="private-risk-card private-risk-execution" aria-labelledby="private-risk-execution-title">
+        <div className="private-risk-step"><span>04</span><div><p>STEP 04</p><h2 id="private-risk-execution-title">Execution gating</h2></div></div>
+        <div className="private-risk-gate">
+          <div><span className="private-risk-label">Execution</span><strong>Execution: NOT CONNECTED</strong></div>
+          <div><span className="private-risk-label">Next action</span><p>{copy.next}</p></div>
+        </div>
+        <details className="private-risk-details private-risk-audit">
+          <summary>Technical / audit details</summary>
+          {record?.risk
+            ? <p><strong>Original scan receipt</strong> · v2 · HOLD</p>
+            : <p><strong>Original scan receipt</strong> · Not available</p>}
+          <p>The original receipt preserves the raw scan assessment when available. It is separate from the project policy above and never grants execution.</p>
+          <p><strong>Source clues (unverified)</strong>: {candidate.context}</p>
+          <RiskReceiptDownload status={status} candidateId={selectedId} />
+        </details>
       </section>
     </div>
   </main>;

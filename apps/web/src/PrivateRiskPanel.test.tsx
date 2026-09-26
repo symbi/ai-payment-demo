@@ -18,32 +18,33 @@ const completed = (candidateId: 'H1' | 'G1', toxicScore: number) => ({ candidate
 
 it('renders an empty private panel without synthetic results', () => {
   const html = renderToStaticMarkup(createElement(PrivateRiskPanel, props(null)));
-  expect(html).toContain('评估收款方地址'); expect(html).toContain('尚未取得扫描记录'); expect(html).toContain('不填充 0'); expect(html).toContain('disabled');
+  expect(html).toContain('Agent Payment Guard'); expect(html).toContain('Intercepta Awaiting'); expect(html).toContain('Missing'); expect(html).toContain('disabled');
 });
 
 it('disables scanning when status is not ready, exhausted, or pending', () => {
   const notReady = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ ready: false, message: '需私人电脑启动' }))));
   const exhausted = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 3 }))));
   const pending = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [{ candidateId: 'G1', state: 'pending', attemptedAt: '2026-09-27T01:00:00.000Z', risk: null }] }))));
-  for (const html of [notReady, exhausted, pending]) expect(html).toContain('扫描这个真实地址（消耗1次）');
-  expect(notReady).toContain('需私人电脑启动'); expect(exhausted).toContain('3/3'); expect(pending).toContain('已有扫描处于 pending');
+  for (const html of [notReady, exhausted, pending]) expect(html).toContain('Assess Payment');
+  expect(notReady).toContain('not ready on this device'); expect(notReady).not.toContain('需私人电脑启动'); expect(exhausted).toContain('3/3'); expect(pending).toContain('A scan is pending');
 });
 
-it('shows a live zero raw score without turning it into a safety grade', () => {
+it('shows a legacy zero raw score without turning it into a safety grade', () => {
   const html = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [completed('H1', 0)] }))));
-  expect(html).toContain('Intercepta 原始 toxicScore'); expect(html).toContain('>0<'); expect(html).toContain('0 不等于安全'); expect(html).toContain('真实API返回（本机保存的上次结果）'); expect(html).toContain('暂缓（HOLD）：依据不足');
-  expect(html).not.toContain('/100'); expect(html).not.toContain('原始返回原因'); expect(html).toContain('查看本地检查说明');
+  expect(html).toContain('Toxic Score'); expect(html).toContain('>0<'); expect(html).not.toContain('Address is safe'); expect(html).toContain('HOLD');
+  expect(html).toContain('evidence_unavailable'); expect(html).not.toContain('>ALLOW<');
+  expect(html).not.toContain('/100'); expect(html).not.toContain('本地检查产生的说明'); expect(html).toContain('Technical details');
 });
 
 it('renders unavailable records as failed evidence and keeps selected records separate', () => {
   const unavailable = { candidateId: 'H1' as const, state: 'unavailable' as const, attemptedAt: '2026-09-27T01:00:00.000Z', risk: null };
   const failedHtml = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [unavailable] }))));
   const otherHtml = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 2, records: [unavailable, completed('G1', 7)] }), 'G1')));
-  expect(failedHtml).toContain('未取得有效证据'); expect(failedHtml).toContain('暂缓（HOLD）：依据不足');
+  expect(failedHtml).toContain('Evidence unavailable'); expect(failedHtml).toContain('HOLD');
   expect(otherHtml).toContain('>7<'); expect(otherHtml).not.toContain('本地检查产生的说明'); expect(otherHtml).not.toContain('>0<');
 });
 
 it('renders pending as unconfirmed and does not claim that it was never requested', () => {
   const html = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [{ candidateId: 'H1', state: 'pending', attemptedAt: '2026-09-27T01:00:00.000Z', risk: null }] }))));
-  expect(html).toContain('尚未确认'); expect(html).toContain('不宣称未请求');
+  expect(html).toContain('A scan is pending'); expect(html).toContain('HOLD'); expect(html).toContain('Execution: NOT CONNECTED');
 });

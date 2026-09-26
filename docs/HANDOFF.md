@@ -2,6 +2,46 @@
 
 Authorized 2026-09-26: local basic demo first. This is personal work; no company code, accounts, keys or data. Reviewed and locally verified modules may be committed and pushed to the user's verified SYMBI personal repository. No public release, paid LLM calls or real-money payments. Do not fake development history or claim simulated results are live. User requested separate A/B Codex tasks. Keep Taskboard labels separate from actual task/thread binding.
 
+## Agent Payment Guard (2026-09-27)
+
+The private page now presents payment intent, Intercepta evidence, a project policy decision, and execution gating. The primary flow is English; diagnostics, the original v2 scan receipt and spending-policy management remain collapsed. The requested amount defaults to 0.005 USDC. Selecting a recipient or editing the amount only recomputes locally; a saved scan cannot be repeated.
+
+`Project/Intercepta Payment Policy v1` is this project's deterministic demonstration policy, not an Intercepta verdict or backend execution permission. It preserves Toxic Score as a raw value without weighted scores or numerical thresholds. In priority order:
+
+1. Invalid amounts or unavailable/invalid live evidence produce HOLD.
+2. Missing or positive unknown-trait count produces HOLD.
+3. Observed `sanction_address`, `blacklist` or `known_scammer` produces DENY.
+4. Incomplete saved trait labels produce HOLD; an already observed hard-deny trait still denies.
+5. `mixer_transfers`, `non_kyc_transfers`, `sanction_address_communication`, `fake_phishing_transfer`, `fake_phishing_contract_communication` or `rug_pull_trader` produces ALLOW WITH LIMIT, with a project-defined 0.001 USDC cap. Amounts above the cap require reduction; the application does not change the entered amount automatically.
+6. A complete live HTTP 200 record with zero traits produces ALLOW under this policy; it does not certify address safety. Other recognized but unmapped evidence produces HOLD.
+
+Every outcome retains `Execution: NOT CONNECTED`. No wallet connection, signing, payment, budget reservation or settlement was added. A saved spending grant shows its actual budget, single-payment limit and expiry only; absent grants show Not configured. This page does not claim that a grant covers the selected recipient or that remaining budget is known. Historical scans, candidates, the 20-attempt quota, scanner/parser, server-only key handling, receipt filtering and payment backend are unchanged.
+
+On a private machine, update the existing authorized checkout of `demo/permission-and-risk-v1`, preserving local configuration and journals. Run `npm run ci:local` with installed dependencies and `npm run demo:prepare`, then use the existing `npm run demo:live` entrypoint and its printed loopback URL. Existing saved records are evaluated locally. A manual Assess Payment for a previously unscanned recipient consumes the existing scan allowance; do not clear journals or retry saved recipients. No provider API or payment call is needed to validate the page offline.
+
+The fully intercepted browser acceptance is `node --import tsx tests/policy-v8/browser-check.mjs` with an existing Chrome installation. Its screenshots are explicitly marked OFFLINE FIXTURE and cover allow, limit, deny, unavailable/unknown HOLD, amount edits, reload recovery, actual saved-grant fields and a 390px viewport. They are not live-provider or payment evidence.
+
+## Sequential local verification
+
+`npm run ci:local` is the deterministic pre-push verification command. It reports the Node version, full Git HEAD and dirty state, then runs these steps sequentially and stops at the first nonzero exit:
+
+1. TypeScript typecheck.
+2. The complete offline Vitest discovery set with one worker; no test-name or path filter is applied.
+3. The private risk page build.
+4. The buyer production build.
+
+Each started step prints a PASS or FAIL result and exit code. Later steps are reported as not run after a failure. The command uses only already-installed project dependencies and never installs or replaces packages.
+
+### Local evidence versus hosted CI
+
+Local `ci:local` success is local evidence only; it is not a hosted-CI pass or deployment evidence. Hosted GitHub Actions evidence checked on 2026-09-27 for run `36268364761` showed zero runners and no steps, with an account-locked-due-to-billing annotation even though Actions was enabled and allowed actions were set to all. This is a hosted account/billing availability failure, not an application test failure. Do not rerun or change billing from this handoff; keep `ci:local` as the required pre-push check until the hosted account is unlocked. The command was introduced from baseline Git commit `2d7b8661c19038e5cc075d2ed7f152e960f7186d`; record the actual HEAD and dirty state printed by each later run with its result.
+
+### Environment setup
+
+For a fresh isolated or fresh private checkout, install the locked dependencies once with `npm ci`, then run `npm run ci:local`.
+
+For an existing private or shared working environment whose dependencies are already installed, run only `npm run ci:local`. Do not reinstall or replace the current `node_modules` as part of verification.
+
 ## Browser request recovery and candidate handoff (2026-09-27)
 
 The buyer page stores only its request ID and whether a check was attempted in this browser origin. Reload queries the original request; it never automatically creates or checks another request. A lost response can be recovered through Refresh status. If the backend restarted and lost its memory record, or browser storage is unavailable/corrupt, status remains unknown and new quote/check actions stay blocked. Do not clear storage or create a fresh checkout to conceal that state. This is browser identity continuity, not a durable backend ledger or cross-tab execution lock. Payment remains disabled.

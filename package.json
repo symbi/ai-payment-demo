@@ -14,6 +14,7 @@
     "demo:serve": "npm run demo:build && tsx apps/demo/src/index.ts",
     "demo:test": "vitest run shared/demo-assessment.test.ts apps/demo/src/app.test.ts tests/symphony-step2/step2-ui.test.ts --maxWorkers=1",
     "typecheck": "tsc --noEmit",
+    "ci:local": "node scripts/ci-local.mjs",
     "test": "vitest run --maxWorkers=2",
     "build": "vite build --config apps/web/vite.config.ts",
     "demo:test:step3": "vitest run shared/demo-requests.test.ts shared/demo-risk-evidence.test.ts apps/buyer/src/intercepta-response.test.ts apps/buyer/src/intercepta.test.ts apps/web/src/api.test.ts apps/web/src/DemoRiskEvidence.test.tsx tests/symphony-step3/state tests/symphony-step3/risk --maxWorkers=1",

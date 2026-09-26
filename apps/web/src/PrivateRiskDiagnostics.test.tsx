@@ -25,22 +25,22 @@ it('shows schema failure with HTTP 200 without discarding unavailable diagnostic
   const html = render({ transport: 'received', httpStatus: 200, diagnosticCode: 'schema-unsupported', schemaDiagnostic: {
     topLevelKeys: ['toxicScore', 'traits', 'metadata'], otherKeysCount: 2, toxicScoreType: 'string', traitsType: 'array', traitsCount: 3,
   } });
-  expect(html).toContain('核心字段结构尚不受支持');
+  expect(html).toContain('core schema is unsupported');
   expect(html).toContain('>200<');
-  expect(html).toContain('toxicScore、traits、metadata');
-  expect(html).toContain('响应 traits 数组长度');
+  expect(html).toContain('toxicScore, traits, metadata');
+  expect(html).toContain('Response traits length');
   expect(html).toContain('>3<');
-  expect(html).toContain('暂缓（HOLD）');
+  expect(html).toContain('HOLD');
   expect(html).not.toContain('SECRET_PROVIDER_TEXT');
 });
 
 it.each([
-  ['http-error', '非成功 HTTP 状态'], ['body-invalid', '正文无法'], ['timeout', '请求超时'],
-  ['transport-error', '请求传输失败'], ['configuration', '本地扫描配置'],
+  ['http-error', 'non-success HTTP status'], ['body-invalid', 'could not be read'], ['timeout', 'timed out'],
+  ['transport-error', 'transport failed'], ['configuration', 'Local scan configuration'],
 ] as const)('renders safe %s explanation even for unavailable records', (diagnosticCode, expected) => {
   const html = render({ diagnosticCode, ...(diagnosticCode === 'http-error' ? { httpStatus: 429 } : {}) });
   expect(html).toContain(expected);
-  expect(html).toContain('暂缓（HOLD）');
+  expect(html).toContain('HOLD');
   expect(html).not.toContain('SECRET_PROVIDER_TEXT');
   if (diagnosticCode === 'http-error') expect(html).toContain('>429<');
 });
@@ -49,22 +49,24 @@ it('keeps totals, unknown traits, extra fields and displayed known labels distin
   const html = render({ transport: 'received', httpStatus: 200, diagnosticCode: 'observed', toxicScore: 0,
     traitsCount: 4, unknownTraitsCount: 2, additionalFieldsCount: 3, traitLabels: ['rug_pull', 'blacklist'],
   }, 'live');
-  expect(html).toContain('返回的风险条目总数</dt><dd>4');
-  expect(html).toContain('未知标签条目数量</dt><dd>2');
-  expect(html).toContain('忽略的新增字段数量</dt><dd>3');
-  expect(html).toContain('rug_pull、blacklist');
-  expect(html).toContain('当前展示 2 个已知标签');
-  expect(html).toContain('0 不等于安全');
-  expect(html).toContain('暂缓（HOLD）');
+  expect(html).toContain('Evidence</dt><dd>4');
+  expect(html).toContain('Total observed traits</dt><dd>4');
+  expect(html).toContain('Unknown trait count</dt><dd>2');
+  expect(html).toContain('Ignored additional fields</dt><dd>3');
+  expect(html).toContain('Displayed known labels</dt><dd>2');
+  expect(html).toContain('rug_pull');
+  expect(html).toContain('blacklist');
+  expect(html).toContain('Some provider evidence is not yet understood');
+  expect(html).toContain('HOLD');
   expect(html).not.toContain('SECRET_PROVIDER_TEXT');
 });
 
 it('maps only exact known legacy reasons and never exposes arbitrary reason text', () => {
-  expect(render({}, 'unavailable', ['Unsupported scan response. Review required.'])).toContain('核心字段结构尚不受支持');
+  expect(render({}, 'unavailable', ['Unsupported scan response. Review required.'])).toContain('core schema is unsupported');
   const unknown = render({}, 'unavailable', ['Scan service unavailable. SECRET_PROVIDER_TEXT']);
-  expect(unknown).toContain('旧记录未保存详细诊断');
+  expect(unknown).toContain('legacy record contains no bounded diagnostic category');
   expect(unknown).not.toContain('SECRET_PROVIDER_TEXT');
-  expect(unknown).toContain('HTTP 状态</dt><dd>未记录');
+  expect(unknown).toContain('HTTP status</dt><dd>Not recorded');
 });
 
 it('does not render unvalidated schema names or type text', () => {
@@ -76,9 +78,9 @@ it('does not render unvalidated schema names or type text', () => {
 
 it('renders bounded known-field failures and unknown counts without trait values', () => {
   const html = render({ transport:'received', httpStatus:200, diagnosticCode:'schema-unsupported', schemaDiagnostic:describeScanSchema({toxicScore:1, traits:[{name:'known_scammer'},{name:'SECRET-UNKNOWN'}]}) });
-  expect(html).toContain('risk 缺失');
-  expect(html).toContain('description 缺失');
-  expect(html).toContain('结构不符合要求的条目');
+  expect(html).toContain('missing / invalid risk');
+  expect(html).toContain('Description missing / invalid');
+  expect(html).toContain('Malformed items');
   expect(html).not.toContain('SECRET');
 });
 
@@ -86,7 +88,7 @@ it('explains provider omission of optional txsCount while keeping HOLD', () => {
   const html = render({ transport: 'received', httpStatus: 200, diagnosticCode: 'observed',
     schemaDiagnostic: describeScanSchema({ toxicScore: 1, traits: [{ name: 'rug_pull', risk: 1, description: '' }] }),
   }, 'live');
-  expect(html).toContain('txsCount 未提供（可选字段） / 类型错误');
-  expect(render({ diagnosticCode: 'observed' }, 'live')).toContain('服务方未提供时不补零');
-  expect(html).toContain('暂缓（HOLD）');
+  expect(html).toContain('Optional txsCount missing / invalid');
+  expect(render({ diagnosticCode: 'observed' }, 'live')).toContain('Missing values remain missing');
+  expect(html).toContain('HOLD');
 });

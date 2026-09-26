@@ -5,7 +5,7 @@ import { TaskAuthorizationDemo } from './TaskAuthorizationDemo.tsx';
 
 export function PrivateRiskDemo() {
   const client = useRef<PrivateRiskClient | null>(null);
-  const [state, setState] = useState<PrivateRiskClientState>({ selectedId: 'H1', status: null, loading: false, message: '私人电脑专用，只查询地址风险，不付款。' });
+  const [state, setState] = useState<PrivateRiskClientState>({ selectedId: 'H1', status: null, loading: false, message: '' });
   useEffect(() => {
     let active = true;
     const instance = new PrivateRiskClient(next => { if (active) setState(next); });
@@ -16,7 +16,7 @@ export function PrivateRiskDemo() {
   return <>
     <PrivateRiskPanel {...state} onSelect={id => client.current?.select(id)} onScan={() => { void client.current?.scan(); }} onRefresh={() => { void client.current?.refresh(); }} />
     <details className="task-authorization-disclosure">
-      <summary>任务许可与预算</summary>
+      <summary>Advanced spending policy</summary>
       <TaskAuthorizationDemo />
     </details>
   </>;
