@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { assessDemoPayment, DEFAULT_WEIGHTS } from '../../../shared/demo-assessment.ts';
+import { advanceRequest, createRequest, type DemoRequest, type DemoRequestInput } from '../../../shared/demo-requests.ts';
+import { DemoRequestClient } from '../../../apps/web/src/demo-request-client.ts';
 import { isAssessmentResponse } from '../../../apps/web/src/PayAssessmentDemo.tsx';
 
 const input = {
@@ -24,24 +26,37 @@ it.each([
   expect(isAssessmentResponse(candidate)).toBe(false);
 });
 
-it('keeps input invalidation and late-response guards before every result write', () => {
-  const source = readFileSync('apps/web/src/PayAssessmentDemo.tsx', 'utf8');
-  const revisionCapture = source.indexOf('const revision = inputRevision.current;');
-  const responseAwait = source.indexOf('const value: unknown = await response.json();');
-  const staleGuard = source.indexOf('if (revision !== inputRevision.current) return;', responseAwait);
-  const resultWrite = source.indexOf('setAssessment(value);', responseAwait);
-  const catchGuard = source.indexOf('if (revision !== inputRevision.current) return;', resultWrite);
-  const catchWrite = source.indexOf('setAssessment(null);', catchGuard);
-  expect(revisionCapture).toBeGreaterThan(-1);
-  expect(responseAwait).toBeGreaterThan(revisionCapture);
-  expect(staleGuard).toBeGreaterThan(responseAwait);
-  expect(resultWrite).toBeGreaterThan(staleGuard);
-  expect(catchGuard).toBeGreaterThan(resultWrite);
-  expect(catchWrite).toBeGreaterThan(catchGuard);
-  expect(source).toContain('inputRevision.current += 1;');
-  expect(source).toContain('setAssessment(null);');
-  expect(source).toContain('window.setTimeout(() => controller.abort(), 10000)');
-  expect(source).toContain('signal: controller.signal');
+it('keeps a late allow invalid after input change and cannot reattach it after explicit end', async () => {
+  const requestInput: DemoRequestInput = {
+    ...input, weights: [...input.weights], scenario: 'normal',
+  };
+  let resolveFirst!: (record: DemoRequest) => void;
+  const firstResponse = new Promise<DemoRequest>(resolve => { resolveFirst = resolve; });
+  let stored: string | null = null;
+  const storage = { getItem: () => stored, setItem: (_key: string, value: string) => { stored = value; } };
+  const client = new DemoRequestClient({
+    mode: 'http', storage, id: () => 'late-input-change', now: () => 0,
+    transport: { post: () => firstResponse, get: async () => null },
+  });
+  const work = client.submit(requestInput);
+  client.invalidate();
+  resolveFirst(advanceRequest(createRequest('late-input-change', requestInput, 0), 300));
+  await work;
+  const afterChange = client.snapshot();
+  expect(afterChange).toMatchObject({ invalidated: true, record: { status: 'completed', result: { decision: 'allow' } } });
+  expect(!afterChange.invalidated && afterChange.record?.status === 'completed').toBe(false);
+
+  let resolveSecond!: (record: DemoRequest) => void;
+  const secondResponse = new Promise<DemoRequest>(resolve => { resolveSecond = resolve; });
+  const ended = new DemoRequestClient({
+    mode: 'http', storage, id: () => 'ended-request', now: () => 0,
+    transport: { post: () => secondResponse, get: async () => null },
+  });
+  const oldWork = ended.submit(requestInput);
+  ended.end();
+  resolveSecond(advanceRequest(createRequest('ended-request', requestInput, 0), 300));
+  await oldWork;
+  expect(ended.snapshot()).toMatchObject({ record: null, busy: false, invalidated: false });
 });
 
 it('keeps the generated offline page self-contained and clearly simulated', () => {

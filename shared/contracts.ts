@@ -18,8 +18,10 @@ export interface RiskResult {
   scan?: {
     transport: 'received' | 'unavailable';
     toxicScore?: number;
-    /** Only an empty traits array has a verified response shape so far. */
-    traitsCount?: 0;
+    /** Bounded observed count (0..100); not a safety decision. */
+    traitsCount?: number;
+    /** Up to 20 allowlisted labels, at most 120 characters each. */
+    traitLabels?: string[];
     requestedNetwork: string;
     coverage: 'unverified';
     semantics: 'unverified';
@@ -56,10 +58,31 @@ export interface PaymentExecutionFacts {
   retryAllowed: false;
 }
 /** Completion also requires validated delivery; settled alone is insufficient. */
-export type ProtectedPaymentOutcome = PaymentExecutionFacts & (
+export type IdentifiedPaymentOutcome = PaymentExecutionFacts & (
   | { taskComplete: false }
   | { taskComplete: true; settlement: 'settled' }
 );
+/** No trusted operation identity: expose the stop reason without asserting unsigned/unpaid.
+ * This branch never permits retry and must not be repaired by inventing an ID.
+ */
+export interface UnidentifiedPaymentOutcome {
+  identity: 'unavailable';
+  operationId: null;
+  decision: 'hold';
+  reasonCodes: string[];
+  reasons: string[];
+  evidence: {
+    source: 'unavailable'; evidenceId: null; address: null; checkedAt: null;
+    requestedPaymentNetwork: string; providerEvidenceNetwork: null;
+    coverage: 'unverified'; semantics: 'unverified';
+  };
+  checkedQuoteHash: null;
+  signingInputHash: null;
+  signing: 'unknown'; submission: 'unknown'; settlement: 'unknown';
+  retryAllowed: false;
+  taskComplete: false;
+}
+export type ProtectedPaymentOutcome = IdentifiedPaymentOutcome | UnidentifiedPaymentOutcome;
 export type PurchaseStatus = 'quoted' | 'denied' | 'held' | 'paid' | 'settlement_unknown' | 'error';
 export interface PurchaseResult {
   requestId: string; status: PurchaseStatus; decision: Decision; reasons: string[];

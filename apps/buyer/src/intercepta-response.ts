@@ -31,6 +31,8 @@ export type InterceptaResponse =
   | { kind: 'unknown'; reason: 'invalid-response' };
 
 const traitNames: ReadonlySet<string> = new Set(INTERCEPTA_TRAIT_NAMES);
+export const MAX_INTERCEPTA_TRAITS = 100;
+export const MAX_INTERCEPTA_TRAIT_LABELS = 20;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -43,7 +45,10 @@ function isFiniteNumber(value: unknown): value is number {
 /** Validate documented facts only. This function assigns no risk decision or score threshold. */
 export function parseInterceptaResponse(value: unknown): InterceptaResponse {
   try {
-    if (!isRecord(value) || !isFiniteNumber(value.toxicScore) || !Array.isArray(value.traits)) {
+    if (!isRecord(value) || Object.keys(value).length !== 2 ||
+        !Object.hasOwn(value, 'toxicScore') || !Object.hasOwn(value, 'traits') ||
+        !isFiniteNumber(value.toxicScore) || !Array.isArray(value.traits) ||
+        value.traits.length > MAX_INTERCEPTA_TRAITS) {
       return { kind: 'unknown', reason: 'invalid-response' };
     }
 

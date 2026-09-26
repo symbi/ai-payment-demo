@@ -19,6 +19,21 @@ it('records finite score as a fact without inventing a safe threshold', async ()
   const result = await createInterceptaScanner('FAKE', async () => Response.json({ toxicScore: -123.5, traits: [] }))(address, network);
   expect(result.decision).toBe('hold'); expect(result.scan?.toxicScore).toBe(-123.5);
 });
+it('carries parsed nonempty provider traits as facts while holding network and meaning', async () => {
+  const trait = { risk: 81.5, name: 'known_scammer', txsCount: 3, description: 'Observed provider description' };
+  const result = await createInterceptaScanner('FAKE', async () => Response.json({ toxicScore: 0, traits: [trait] }))(address, network);
+  expect(result).toMatchObject({ source: 'live', decision: 'hold', observation: { kind: 'observed', toxicScore: 0, traits: [{ ...trait, description: '' }] },
+    scan: { transport: 'received', traitsCount: 1, traitLabels: ['known_scammer'], requestedNetwork: network, coverage: 'unverified', semantics: 'unverified' } });
+});
+it('bounds displayed labels at 20, reports the full count, and rejects more than 100 traits', async () => {
+  const trait = { risk: 1, name: 'rug_pull', txsCount: 1, description: 'Synthetic fixture' };
+  const twentyFive = await createInterceptaScanner('FAKE', async () => Response.json({ toxicScore: 9, traits: Array.from({ length: 25 }, () => trait) }))(address, network);
+  expect(twentyFive).toMatchObject({ decision: 'hold', scan: { traitsCount: 25 } });
+  expect(twentyFive.scan?.traitLabels).toHaveLength(20);
+  expect(twentyFive.reasons[0]).toContain('not the full trait list');
+  const tooMany = await createInterceptaScanner('FAKE', async () => Response.json({ toxicScore: 9, traits: Array.from({ length: 101 }, () => trait) }))(address, network);
+  expect(tooMany).toMatchObject({ source: 'unavailable', decision: 'hold', scan: { transport: 'received' } });
+});
 it.each([undefined, '', 'bad\nkey'])('does not call provider with unusable key %#', async key => {
   const transport = vi.fn(); expect((await createInterceptaScanner(key, transport)(address, network)).source).toBe('unavailable'); expect(transport).not.toHaveBeenCalled();
 });
@@ -43,4 +58,16 @@ it('bounds fetch that ignores cancellation', async () => {
 });
 it('bounds a stalled streamed body', async () => {
   const result = await createInterceptaScanner('FAKE', async () => new Response(new ReadableStream({ start() {} }), { headers: { 'content-type': 'application/json' } }), 10)(address, network); expect(result.decision).toBe('hold'); expect(result.source).toBe('unavailable');
+});
+
+it('does not forward free text or echoed secrets even in the internal observation field', async () => {
+  const key = 'FAKE-ECHOED-API-KEY';
+  const payload = { toxicScore: 30, traits: [{ name:'known_scammer',risk:10,txsCount:1,description:`provider arbitrary text ${key}`,extra:'UNTRUSTED-EXTRA' }] };
+  const risk = await createInterceptaScanner(key, async () => Response.json(payload))(address,network);
+  expect(risk.decision).toBe('hold');
+  expect(risk.scan?.traitLabels).toEqual(['known_scammer']);
+  expect(risk.observation).toMatchObject({kind:'observed',traits:[{description:''}]});
+  expect(JSON.stringify(risk)).not.toContain(key);
+  expect(JSON.stringify(risk)).not.toContain('provider arbitrary text');
+  expect(JSON.stringify(risk)).not.toContain('UNTRUSTED-EXTRA');
 });

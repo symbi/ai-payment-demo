@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { open, readFile, rename, unlink } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { PRICE_ATOMIC, RESOURCE_PATH, TEST_CHAIN_ID, TEST_NETWORK, TEST_USDC, type ProtectedPaymentOutcome } from '../../../shared/contracts.ts';
+import { PRICE_ATOMIC, RESOURCE_PATH, TEST_CHAIN_ID, TEST_NETWORK, TEST_USDC, type ProtectedPaymentOutcome, type UnidentifiedPaymentOutcome } from '../../../shared/contracts.ts';
 import { isAddress, isAtomic, isRecord } from './policy.ts';
 import type { Quote } from './seller.ts';
 
@@ -9,10 +9,6 @@ const fields = [
   { name: 'from', type: 'address' }, { name: 'to', type: 'address' },
   { name: 'value', type: 'uint256' }, { name: 'validAfter', type: 'uint256' },
   { name: 'validBefore', type: 'uint256' }, { name: 'nonce', type: 'bytes32' },
-] as const;
-const domainFields = [
-  { name: 'name', type: 'string' }, { name: 'version', type: 'string' },
-  { name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' },
 ] as const;
 const idPattern = /^(?!__proto__$)(?!constructor$)(?!prototype$)[A-Za-z0-9_-]{8,128}$/;
 const keys = (v: Record<string, unknown>, expected: string[]) => Object.keys(v).length === expected.length && expected.every(k => Object.hasOwn(v, k));
@@ -148,8 +144,8 @@ function validTyped(value: unknown, auth: Authorization, quote: Quote): boolean 
     !isRecord(value.domain) || !keys(value.domain, ['name', 'version', 'chainId', 'verifyingContract']) ||
     value.domain.name !== 'USDC' || value.domain.version !== '2' || number(value.domain.chainId) !== BigInt(TEST_CHAIN_ID) ||
     typeof value.domain.verifyingContract !== 'string' || value.domain.verifyingContract.toLowerCase() !== TEST_USDC.toLowerCase() ||
-    !isRecord(value.types) || !keys(value.types, ['EIP712Domain', 'TransferWithAuthorization']) ||
-    canonical(value.types.EIP712Domain) !== canonical(domainFields) || canonical(value.types.TransferWithAuthorization) !== canonical(fields) ||
+    !isRecord(value.types) || !keys(value.types, ['TransferWithAuthorization']) ||
+    canonical(value.types.TransferWithAuthorization) !== canonical(fields) ||
     !isRecord(value.message) || !keys(value.message, ['from', 'to', 'value', 'validAfter', 'validBefore', 'nonce'])) return false;
   const m = value.message;
   const after = number(m.validAfter), before = number(m.validBefore);
@@ -175,9 +171,35 @@ function outcome(id: string, op: StoredOperation, source: 'fixture' | 'unavailab
     settlement: op.settlement, retryAllowed: false as const };
   return op.taskComplete && op.settlement === 'settled' ? { ...result, settlement: 'settled', taskComplete: true } : { ...result, taskComplete: false };
 }
-const held = (reason: string): ProtectedPaymentOutcome => ({ operationId: '', decision: 'hold', reasonCodes: [reason], reasons: [reason],
-  evidence: { source: 'unavailable', evidenceId: null, address: null, checkedAt: null, requestedPaymentNetwork: TEST_NETWORK, providerEvidenceNetwork: null, coverage: 'unverified', semantics: 'unverified' },
-  checkedQuoteHash: null, signingInputHash: null, signing: 'not_signed', submission: 'not_submitted', settlement: 'not_settled', taskComplete: false, retryAllowed: false });
+function held(reason: string, operationId?: string): ProtectedPaymentOutcome {
+  const common = { decision: 'hold' as const, reasonCodes: [reason], reasons: [reason],
+    evidence: { source: 'unavailable' as const, evidenceId: null, address: null, checkedAt: null,
+      requestedPaymentNetwork: TEST_NETWORK, providerEvidenceNetwork: null, coverage: 'unverified' as const, semantics: 'unverified' as const },
+    checkedQuoteHash: null, signingInputHash: null, taskComplete: false as const, retryAllowed: false as const };
+  if (operationId) return { ...common, operationId, signing: 'not_signed', submission: 'not_submitted', settlement: 'not_settled' };
+  const unidentified: UnidentifiedPaymentOutcome = { ...common, identity: 'unavailable', operationId: null,
+    signing: 'unknown', submission: 'unknown', settlement: 'unknown' };
+  return unidentified;
+}
+/** An authorized ID may identify a stopped check only after checking the durable journal for
+ * a competing or already-executed operation. No ID is fabricated for pre-authorization holds.
+ */
+async function authorizedHold(path: string, auth: Authorization, prompt: string, hash: string, amount: string, reason: string): Promise<ProtectedPaymentOutcome> {
+  try {
+    return await locked(path, async journal => {
+      const existing = journal.operations[auth.operationId];
+      const competing = Object.entries(journal.operations).some(([id, op]) =>
+        id !== auth.operationId && (op.requestId === auth.requestId || op.authorizationId === auth.authorizationId));
+      if (competing) return held('OPERATION_CONFLICT');
+      if (existing) {
+        if (existing.taskId !== auth.taskId || existing.authorizationId !== auth.authorizationId || existing.requestId !== auth.requestId ||
+          existing.promptHash !== digest(prompt) || existing.quoteHash !== hash || existing.amount !== amount) return held('OPERATION_CONFLICT');
+        return outcome(auth.operationId, existing);
+      }
+      return held(reason, auth.operationId);
+    });
+  } catch { return held('JOURNAL_UNAVAILABLE'); }
+}
 async function bounded<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -222,7 +244,7 @@ export class ProtectedPayment {
       risk.source !== 'fixture' || risk.decision !== 'allow' || typeof risk.evidenceId !== 'string' || !idPattern.test(risk.evidenceId) ||
       typeof risk.address !== 'string' || risk.address.toLowerCase() !== quote.terms.payTo.toLowerCase() ||
       risk.requestedNetwork !== TEST_NETWORK || risk.coverage !== 'verified' || risk.semantics !== 'verified' ||
-      typeof risk.checkedAt !== 'string' || !fresh(risk.checkedAt)) return { execution: held('RISK_UNVERIFIED') };
+      typeof risk.checkedAt !== 'string' || !fresh(risk.checkedAt)) return { execution: await authorizedHold(this.deps.journalPath, auth, prompt, hash, quote.terms.amount, 'RISK_UNVERIFIED') };
     const amount = quote.terms.amount;
     let existing: StoredOperation | undefined;
     let reservedOp: StoredOperation | undefined;
@@ -246,7 +268,11 @@ export class ProtectedPayment {
           signingInputHash: null, signing: 'unknown', submission: 'not_submitted', settlement: 'not_settled', taskComplete: false, reasonCode: 'SIGNING_OUTCOME_UNKNOWN' };
         j.operations[auth.operationId] = next; reservedOp = structuredClone(next); return undefined;
       });
-    } catch (error) { return { execution: held(error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'JOURNAL_UNAVAILABLE') }; }
+    } catch (error) {
+      const reason = error instanceof Error && /^[A-Z_]+$/.test(error.message) ? error.message : 'JOURNAL_UNAVAILABLE';
+      return { execution: reason === 'TASK_BUDGET_EXCEEDED'
+        ? await authorizedHold(this.deps.journalPath, auth, prompt, hash, amount, reason) : held(reason) };
+    }
     if (existing) return { execution: outcome(auth.operationId, existing) };
     if (!reservedOp) return { execution: held('JOURNAL_UNAVAILABLE') };
     const uncertain = (reasonCode: string) => outcome(auth.operationId, { ...reservedOp!, reasonCode, signing: 'unknown' });

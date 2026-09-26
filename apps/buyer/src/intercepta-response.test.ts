@@ -21,6 +21,11 @@ it('preserves a nonempty trait and documented numeric facts', () => {
   });
 });
 
+it('accepts at most 100 validated traits and rejects an oversized array', () => {
+  expect(parseInterceptaResponse({ toxicScore: 1, traits: Array.from({ length: 100 }, () => validTrait) })).toMatchObject({ kind: 'observed' });
+  expect(parseInterceptaResponse({ toxicScore: 1, traits: Array.from({ length: 101 }, () => validTrait) })).toEqual(unknown);
+});
+
 it.each(INTERCEPTA_TRAIT_NAMES)('accepts documented trait name %s', name => {
   expect(parseInterceptaResponse({ toxicScore: 0, traits: [{ ...validTrait, name }] })).toMatchObject({
     kind: 'observed', traits: [{ name }],
@@ -49,6 +54,7 @@ it.each([
   { toxicScore: Infinity, traits: [] }, { toxicScore: -Infinity, traits: [] },
   { toxicScore: 0, traits: null }, { toxicScore: 0, traits: {} },
   { toxicScore: 0, traits: [null] }, { toxicScore: 0, traits: [[]] },
+  { toxicScore: 0, traits: [], extra: true },
   { toxicScore: 0, traits: [validTrait, { ...validTrait, name: 'unlisted_trait' }] },
 ])('returns explicit unknown for malformed or incomplete response %#', value => {
   expect(parseInterceptaResponse(value)).toEqual(unknown);

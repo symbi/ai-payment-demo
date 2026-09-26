@@ -1,8 +1,11 @@
 import type { PurchaseResult, ProtectedPaymentOutcome } from '../../../shared/contracts.ts';
 import type { BuyerHealth } from '../../buyer/src/service.ts';
+import { INTERCEPTA_TRAIT_NAMES } from '../../buyer/src/intercepta-response.ts';
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every(x => typeof x === 'string');
+const nonEmptyStrings = (v: unknown): v is string[] => strings(v) && v.every(x => !!x.trim());
 const oneOf = (v: unknown, allowed: string[]): v is string => typeof v === 'string' && allowed.includes(v);
+const traitNames: ReadonlySet<string> = new Set(INTERCEPTA_TRAIT_NAMES);
 export class ApiError extends Error { constructor(message: string, public status?: number) { super(message); } }
 export async function api<T>(path: string, validate: (value: unknown) => value is T, body?: unknown): Promise<T> {
   let response: Response;
@@ -29,9 +32,16 @@ export function isPurchase(v: unknown): v is PurchaseResult {
     const scan = v.risk.scan;
     if (!record(scan) || !oneOf(scan.transport, ['received', 'unavailable']) || scan.coverage !== 'unverified' || scan.semantics !== 'unverified' || typeof scan.requestedNetwork !== 'string') return false;
     if (scan.toxicScore !== undefined && (typeof scan.toxicScore !== 'number' || !Number.isFinite(scan.toxicScore))) return false;
-    if (scan.traitsCount !== undefined && scan.traitsCount !== 0) return false;
+    if (scan.traitsCount !== undefined && (typeof scan.traitsCount !== 'number' || !Number.isInteger(scan.traitsCount) || scan.traitsCount < 0 || scan.traitsCount > 100)) return false;
+    if (scan.traitLabels !== undefined && (!Array.isArray(scan.traitLabels) || scan.traitLabels.length > 20 ||
+      !scan.traitLabels.every(label => typeof label === 'string' && label.length <= 120 && traitNames.has(label)))) return false;
+    if (scan.traitLabels !== undefined && scan.traitsCount === undefined) return false;
+    if (scan.traitsCount !== undefined && scan.traitLabels !== undefined && scan.traitLabels.length > scan.traitsCount) return false;
   }
-  if (v.execution !== undefined && !isExecution(v.execution)) return false;
+  if (v.execution !== undefined) {
+    if (!isExecution(v.execution)) return false;
+    if ('identity' in v.execution && (v.decision === 'allow' || v.status === 'paid' || v.data !== undefined || v.transaction !== undefined)) return false;
+  }
   return true;
 }
 export function displayAmount(atomic: string): string {
@@ -43,7 +53,18 @@ export function displayAmount(atomic: string): string {
 const nullableString = (value: unknown) => value === null || typeof value === 'string';
 /** Validate every public execution field; missing legacy execution stays unreported. */
 export function isExecution(v: unknown): v is ProtectedPaymentOutcome {
-  if (!record(v) || typeof v.operationId !== 'string' || !v.operationId.trim() || !oneOf(v.decision, ['allow', 'deny', 'hold']) || !strings(v.reasonCodes) || !strings(v.reasons)) return false;
+  if (!record(v)) return false;
+  if (v.identity === 'unavailable') {
+    const e = v.evidence;
+    return v.operationId === null && v.decision === 'hold' && nonEmptyStrings(v.reasonCodes) && v.reasonCodes.length > 0 && nonEmptyStrings(v.reasons) && v.reasons.length > 0
+      && record(e) && e.source === 'unavailable' && e.evidenceId === null && e.address === null && e.checkedAt === null
+      && typeof e.requestedPaymentNetwork === 'string' && !!e.requestedPaymentNetwork.trim() && e.providerEvidenceNetwork === null
+      && e.coverage === 'unverified' && e.semantics === 'unverified'
+      && v.checkedQuoteHash === null && v.signingInputHash === null
+      && v.signing === 'unknown' && v.submission === 'unknown' && v.settlement === 'unknown'
+      && v.retryAllowed === false && v.taskComplete === false;
+  }
+  if ('identity' in v || typeof v.operationId !== 'string' || !v.operationId.trim() || !oneOf(v.decision, ['allow', 'deny', 'hold']) || !nonEmptyStrings(v.reasonCodes) || !nonEmptyStrings(v.reasons)) return false;
   if (!nullableString(v.checkedQuoteHash) || !nullableString(v.signingInputHash) || !oneOf(v.signing, ['not_signed', 'signed', 'unknown']) || !oneOf(v.submission, ['not_submitted', 'submitted', 'unknown']) || !oneOf(v.settlement, ['not_settled', 'settled', 'failed', 'unknown']) || v.retryAllowed !== false || typeof v.taskComplete !== 'boolean') return false;
   if (v.taskComplete && (v.settlement !== 'settled' || v.signing !== 'signed' || v.submission !== 'submitted')) return false;
   if (v.submission === 'submitted' && v.signing === 'not_signed') return false;

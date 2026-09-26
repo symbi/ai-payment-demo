@@ -15,13 +15,14 @@ const responseFacts = (result: PurchaseResult) => ({
   ...publicFields(result, ['requestId', 'status', 'decision', 'reasons']),
   terms: publicFields(result.terms, ['scheme', 'network', 'asset', 'amount', 'payTo']),
   risk: result.risk ? { ...publicFields(result.risk, ['decision', 'source', 'reasons', 'address', 'checkedAt', 'provider']), scan: publicFields(result.risk.scan, ['transport', 'toxicScore', 'traitsCount', 'requestedNetwork', 'coverage', 'semantics']) } : undefined,
-  execution: result.execution ? { ...publicFields(result.execution, ['operationId', 'decision', 'reasonCodes', 'reasons', 'checkedQuoteHash', 'signingInputHash', 'signing', 'submission', 'settlement', 'retryAllowed', 'taskComplete']), evidence: publicFields(result.execution.evidence, ['source', 'evidenceId', 'address', 'checkedAt', 'requestedPaymentNetwork', 'providerEvidenceNetwork', 'coverage', 'semantics']) } : undefined,
+  execution: result.execution ? { ...publicFields(result.execution, 'identity' in result.execution ? ['identity', 'decision', 'reasonCodes', 'reasons', 'checkedQuoteHash', 'signingInputHash', 'signing', 'submission', 'settlement', 'retryAllowed', 'taskComplete'] : ['operationId', 'decision', 'reasonCodes', 'reasons', 'checkedQuoteHash', 'signingInputHash', 'signing', 'submission', 'settlement', 'retryAllowed', 'taskComplete']), evidence: publicFields(result.execution.evidence, ['source', 'evidenceId', 'address', 'checkedAt', 'requestedPaymentNetwork', 'providerEvidenceNetwork', 'coverage', 'semantics']) } : undefined,
 });
 const executionLabel = (value?: string) => ({ not_signed: 'Not signed', signed: 'Signed', not_submitted: 'Not submitted', submitted: 'Submitted', not_settled: 'Not settled', settled: 'Settled', failed: 'Failed', unknown: 'Unknown' }[value ?? ''] ?? 'Unknown · Not reported');
 const sourceLabel = (source?: string) => source === 'live' ? 'Live provider evidence' : source === 'fixture' ? 'Fixture evidence · Not live' : 'Unknown · No risk evidence';
 export function LivePaymentCheck(props: Props) {
   const { result, uncertain, requestId, busy, error, serviceReady, canCheck, checked, paymentDisabled, onQuote, onCheck, onQuery } = props;
   const terms = result?.terms; const risk = result?.risk; const execution = result?.execution;
+  const identityUnavailable = !!execution && 'identity' in execution && execution.identity === 'unavailable';
   const unknown = uncertain || executionUnknown(result);
   const evidence = execution?.evidence;
   const source = evidence?.source ?? risk?.source;
@@ -40,17 +41,24 @@ export function LivePaymentCheck(props: Props) {
       <p className="payment-scope">Network: {terms?.network ?? 'Awaiting quote'}. Risk check: recipient. Not a contract audit.</p>
       <h2 className="flow-section-title">2 · Payment decision</h2>
       <div className="check-action">
-        {!requestId ? <button className="primary" disabled={!!busy || !serviceReady || unknown} onClick={onQuote}>Get quote <span aria-hidden="true">→</span></button> : <button className="primary" disabled={!!busy || !canCheck} onClick={onCheck}>{busy === 'pay' ? 'Checking…' : 'Check risk'} <span aria-hidden="true">→</span></button>}
+        {!requestId ? <button className="primary" disabled={!!busy || !serviceReady || unknown} onClick={onQuote}>Get quote <span aria-hidden="true">→</span></button> : <button className="primary" disabled={!!busy || !canCheck || unknown} onClick={onCheck}>{busy === 'pay' ? 'Checking…' : 'Check risk'} <span aria-hidden="true">→</span></button>}
         <p>{paymentDisabled ? 'Explicit check · May contact Intercepta once.' : 'Check unavailable · Runtime mode unconfirmed.'}</p>
       </div>
       {!serviceReady && <p className="payment-scope">Service not ready. See Details.</p>}
       <div className={`check-result ${unknown ? 'result-pause' : decision === 'deny' ? 'result-block' : 'result-pending'}`} aria-live="polite">
         <span className="result-label">{unknown ? 'UNCONFIRMED' : 'BACKEND RESULT'}</span><h3>{title}</h3>
-        {unknown ? <p>Refresh this order to confirm. Do not start another payment.</p> : reasons.length ? <ul className="reason-list">{reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul> : <p>Review the quote, then check the recipient.</p>}
+        {unknown && <p>{identityUnavailable ? 'Operation number was not established. Refresh this order to confirm. Do not start another payment.' : 'Refresh this order to confirm. Do not start another payment.'}</p>}
+        {reasons.length ? <ul className="reason-list">{reasons.map((reason, i) => <li key={i}>{reason}</li>)}</ul> : !unknown && <p>Review the quote, then check the recipient.</p>}
         {error && <p role="alert">{error}</p>}
         {!unknown && execution?.decision === 'allow' && <p>Permission is not payment confirmation.</p>}
       </div>
       <div className="payment-limitations"><p>{paymentDisabled ? 'Payment is disabled.' : 'Payment mode is unconfirmed. Checking is unavailable.'}</p><p>{!source || source === 'unavailable' ? 'Risk: Unknown. No usable evidence.' : `${source === 'fixture' ? 'Fixture evidence only. ' : ''}${evidence?.semantics === 'verified' ? '' : 'Risk meaning is unconfirmed. '}${evidence?.coverage === 'verified' ? '' : 'Network coverage is unconfirmed.'}`}</p></div>
+      <dl className="decision-basis" aria-label="Decision basis">
+        <div><dt>Risk evidence</dt><dd><strong>{unknown ? 'Unknown · Latest state unconfirmed' : sourceLabel(source)}</strong><span>{evidence?.semantics === 'verified' && !unknown ? 'Backend reports interpreted evidence; receipt alone is not approval.' : 'Meaning unknown. A response or zero score is not approval.'}</span></dd></div>
+        <div><dt>Payment content</dt><dd><strong>Unknown · Match not reported</strong><span>{!unknown && execution?.checkedQuoteHash && execution.signingInputHash ? 'Digests reported. No explicit content-match result.' : 'No confirmed comparison of checked quote and signing content.'}</span></dd></div>
+        <div><dt>Task budget</dt><dd><strong>Unknown · Budget check not reported</strong><span>The quote is a price, not a task budget or spending authorization.</span></dd></div>
+        <div><dt>Network applicability</dt><dd><strong>{unknown || !source || source === 'unavailable' ? 'Unknown' : source === 'fixture' ? 'Unknown · Fixture only' : evidence?.coverage === 'mismatch' ? 'Backend reports a mismatch' : evidence?.coverage === 'verified' ? 'Backend reports verified coverage' : 'Unknown · Coverage unverified'}</strong><span>Payment: {terms?.network ?? 'Unknown'} · Evidence: {evidence?.providerEvidenceNetwork ?? 'Unknown'}. Same address does not establish cross-network coverage.</span></dd></div>
+      </dl>
       <h2 className="flow-section-title">3 · Execution</h2>
       <div className="payment-status">
         <span>Signature: <strong>{unknown ? 'Unknown' : executionLabel(execution?.signing)}</strong></span>
@@ -73,11 +81,11 @@ export function LivePaymentCheck(props: Props) {
     <details className="payment-details"><summary>Details</summary>
       <p className="payment-scope">Risk check targets the payment recipient; the report describes a separate bundled Solidity sample. Signing counters and transaction strings do not prove settlement. Report delivery validation is not connected. No automatic payment retry.</p>
       <p className="payment-scope">Request: <code>{requestId || 'Not created'}</code></p>
-      {execution && <dl><div><dt>Operation</dt><dd><code>{execution.operationId}</code></dd></div><div><dt>Checked quote digest</dt><dd><code>{execution.checkedQuoteHash ?? 'Not reported'}</code></dd></div><div><dt>Signing input digest</dt><dd><code>{execution.signingInputHash ?? 'Not reported'}</code></dd></div></dl>}
+      {execution && <dl><div><dt>Operation</dt><dd>{identityUnavailable ? 'Not established · No trusted operation identity' : <code>{execution.operationId}</code>}</dd></div><div><dt>Checked quote digest</dt><dd><code>{execution.checkedQuoteHash ?? 'Not reported'}</code></dd></div><div><dt>Signing input digest</dt><dd><code>{execution.signingInputHash ?? 'Not reported'}</code></dd></div></dl>}
       {execution && <p className="payment-scope">Backend completion claim: {unknown ? 'Unknown' : String(execution.taskComplete)} · Not validated delivery.</p>}
       {result && <details className="response-facts"><summary>Response facts</summary><pre>{JSON.stringify(responseFacts(result), null, 2)}</pre></details>}
       <div className="archived-views"><button className="text-button" onClick={props.onRequest}>Saved request</button><button className="text-button" onClick={props.onServices}>Report offer</button><button className="text-button" onClick={props.onDetails}>Technical details</button></div>
-      <details className="offline-examples"><summary>Offline examples · No API calls</summary><PaymentCheck result={null} uncertain={false} onRequest={props.onRequest} onServices={props.onServices} onScenario={props.onScenario} onDetails={props.onDetails}/></details>
+      {!identityUnavailable && <details className="offline-examples"><summary>Offline examples · No API calls</summary><PaymentCheck result={null} uncertain={false} onRequest={props.onRequest} onServices={props.onServices} onScenario={props.onScenario} onDetails={props.onDetails}/></details>}
     </details>
     <p className="payment-footnote">Manual check · No autonomous agent or payment enabled</p>
   </section>;

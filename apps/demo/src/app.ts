@@ -3,11 +3,15 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { assessDemoPayment, isDemoAssessmentInput, result } from '../../../shared/demo-assessment.ts';
 
+import { DemoRequestStore, isDemoRequestInput, isRequestId, RequestError } from '../../../shared/demo-requests.ts';
+
 const defaultHtmlPath = fileURLToPath(new URL('../../../docs/offline-pay.html', import.meta.url));
 
-export function createDemoApp(options: { html?: string } = {}): Express {
+export function createDemoApp(options: { html?: string; requests?: DemoRequestStore } = {}): Express {
   const app = express();
+  const requests = options.requests ?? new DemoRequestStore();
   app.disable('x-powered-by');
+  app.use((_request, response, next) => { response.set('Cache-Control', 'no-store'); next(); });
   app.use((request, response, next) => {
     const host = request.get('host') ?? '';
     const origin = request.get('origin');
@@ -33,6 +37,26 @@ export function createDemoApp(options: { html?: string } = {}): Express {
     }
     const assessment = assessDemoPayment(request.body);
     response.status(assessment.decision === 'invalid' ? 400 : 200).json(assessment);
+  });
+
+  app.post('/api/demo/requests', (request, response) => {
+    const body = request.body as { id?: unknown; input?: unknown } | null;
+    if (!body || !isRequestId(body.id) || !isDemoRequestInput(body.input)
+      || Object.keys(body).some(key => !['id', 'input'].includes(key))) {
+      response.status(400).json({ simulation: true, paymentEnabled: false, error: '模拟请求输入无效。' }); return;
+    }
+    try { response.json(requests.post(body.id, body.input)); }
+    catch (error) {
+      if (!(error instanceof RequestError)) throw error;
+      response.status(error.code === 'conflict' ? 409 : error.code === 'capacity' ? 503 : 400)
+        .json({ simulation: true, paymentEnabled: false, code: error.code, error: error.message });
+    }
+  });
+  app.get('/api/demo/requests/:id', (request, response) => {
+    if (!isRequestId(request.params.id)) { response.status(400).json({ simulation: true, paymentEnabled: false, error: '无效请求编号。' }); return; }
+    const record = requests.get(request.params.id);
+    if (!record) { response.status(404).json({ simulation: true, paymentEnabled: false, status: 'unresolved', error: '原模拟记录不存在；不会自动新建请求。' }); return; }
+    response.json(record);
   });
 
   app.use((_request, response) => {

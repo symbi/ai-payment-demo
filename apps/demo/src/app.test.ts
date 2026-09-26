@@ -70,3 +70,47 @@ describe('in-memory Express demo API (never listens)', () => {
     expect(result.decision).toBe('deny');
     expect(result.contributions[1]).toMatchObject({level: 1, note: '模拟付款内容已改变'});
   });
+
+import { DemoRequestStore } from '../../../shared/demo-requests.ts';
+const requestInput = { ...valid, scenario: 'normal' as const };
+describe('request API with injected time and no listening socket', () => {
+  it('creates, queries and deduplicates a request, rejecting changed content', async () => {
+    let now = 0;
+    const app = createDemoApp({ requests: new DemoRequestStore(() => now) });
+    const body = { id: 'request-1', input: requestInput };
+    const first = await inject(app, 'POST', '/api/demo/requests', body);
+    expect(first.status).toBe(200); expect(JSON.parse(first.body)).toMatchObject({ status: 'checking', result: null });
+    const duplicates = await Promise.all([inject(app, 'POST', '/api/demo/requests', body), inject(app, 'POST', '/api/demo/requests', body)]);
+    expect(duplicates.every(r => r.status === 200)).toBe(true);
+    now = 1000;
+    const found = await inject(app, 'GET', '/api/demo/requests/request-1');
+    expect(JSON.parse(found.body)).toMatchObject({ status: 'completed', assessmentRuns: 1, result: { decision: 'allow' } });
+    expect(found.headers).toContain('Cache-Control: no-store');
+    const repeated = await inject(app, 'POST', '/api/demo/requests', body);
+    expect(JSON.parse(repeated.body)).toEqual(JSON.parse(found.body));
+    expect((await inject(app, 'POST', '/api/demo/requests', { ...body, input: { ...requestInput, contentChanged: true } })).status).toBe(409);
+  });
+  it('missing request after restart is unresolved and not recreated by GET', async () => {
+    const response = await inject(createDemoApp(), 'GET', '/api/demo/requests/before-restart');
+    expect(response.status).toBe(404); expect(JSON.parse(response.body)).toMatchObject({ status: 'unresolved', paymentEnabled: false });
+  });
+  it('capacity exhaustion preserves pending records and rejects new ids', async () => {
+    let now = 0;
+    const app = createDemoApp({ requests: new DemoRequestStore(() => now, 1) });
+    await inject(app, 'POST', '/api/demo/requests', { id: 'pending', input: { ...requestInput, scenario: 'unresolved' } });
+    now = 10000;
+    expect((await inject(app, 'POST', '/api/demo/requests', { id: 'new', input: requestInput })).status).toBe(503);
+    expect(JSON.parse((await inject(app, 'GET', '/api/demo/requests/pending')).body)).toMatchObject({ status: 'unresolved', result: null });
+  });
+  it.each([{ origin: 'http://elsewhere.invalid' }, { host: 'rebind.invalid' }, { 'sec-fetch-site': 'cross-site' }])('preserves local origin and host restrictions for both routes: %j', async headers => {
+    const app = createDemoApp();
+    expect((await inject(app, 'POST', '/api/demo/requests', { id: 'x', input: requestInput }, headers)).status).toBe(403);
+    expect((await inject(app, 'GET', '/api/demo/requests/x', undefined, headers)).status).toBe(403);
+  });
+  it('preserves 16kb limit and rejects malformed request envelopes', async () => {
+    const app = createDemoApp();
+    expect((await inject(app, 'POST', '/api/demo/requests', { id: 'x', input: requestInput, extra: 'x'.repeat(17000) })).status).toBe(400);
+    expect((await inject(app, 'POST', '/api/demo/requests', { id: 'x', input: { ...requestInput, scenario: 'real' } })).status).toBe(400);
+    expect((await inject(app, 'POST', '/api/demo/requests', { id: 'x', input: requestInput, execute: true })).status).toBe(400);
+  });
+});

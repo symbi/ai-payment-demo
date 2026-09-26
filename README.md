@@ -16,6 +16,20 @@ it binds to `127.0.0.1`, serves only the generated page and
 `POST /api/demo/assess`, and still cannot pay. The file version never fetches.
 Both modes use the same `weighted-demo-v1` pure assessment function.
 
+The Step 3 preview also shows a simulated request ID, checking/completed/unconfirmed
+states, original-request lookup and explicit simulation reset. Expand the scenario
+selector to try normal, delayed or unconfirmed results. Repeated submission of the
+same request does not repeat its assessment; changed content with the same ID is rejected.
+Refresh attempts to restore the last local record. Missing server records stay unconfirmed,
+without automatic resubmission. This is single-browser demo recovery, not real-payment
+idempotency or cross-tab locking; server records are in memory (maximum 128).
+
+Provider-shaped evidence examples are synthetic and separate from the weighted score.
+Real schema/coverage/semantics remain unverified. See
+[private Mac risk-check checklist](docs/PRIVATE_MAC_RISK_CHECK.md); **do not run that
+network check on the restricted company computer**. Local checks:
+`npm run demo:test`, `npm run demo:test:step3`, `npm run typecheck`.
+
 The backend setup below describes the older development application. Do not run
 it on the restricted company computer: localhost does not guarantee that its
 backend will avoid external services. Live payment is not complete.
