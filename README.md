@@ -2,11 +2,19 @@
 
 ## Current preview: offline Pay + weighted assessment
 
-For the current demonstration, open **`docs/offline-pay.html`** directly in your
-browser. No Node installation, API key, wallet connection, server or network
-request is needed. Click **Pay** to evaluate six synthetic scenarios with editable
-weights, contribution scores and allow/hold/deny decisions. This is not a real
-payment. See [private Mac preview instructions](docs/OFFLINE_PREVIEW.md).
+For the current demonstration, double-click **`docs/offline-pay.html`**. The new
+Chinese page is one responsive view with three regions: wallet and task limit,
+order and grouped synthetic recipients, then decision and plain-language reason.
+It needs no API key, wallet connection, server or network request. All six
+recipient addresses and all evidence are visibly synthetic. **Demo allow does not
+mean signed, submitted, paid, or report purchased.** See [private Mac preview
+instructions](docs/OFFLINE_PREVIEW.md).
+
+To rebuild the single-file page from the React source, run `npm run demo:build`.
+An optional local-only simulation endpoint can be started with `npm run demo:serve`;
+it binds to `127.0.0.1`, serves only the generated page and
+`POST /api/demo/assess`, and still cannot pay. The file version never fetches.
+Both modes use the same `weighted-demo-v1` pure assessment function.
 
 The backend setup below describes the older development application. Do not run
 it on the restricted company computer: localhost does not guarantee that its

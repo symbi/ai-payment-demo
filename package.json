@@ -8,6 +8,9 @@
     "setup:local": "node scripts/setup-local.mjs",
     "dev": "node scripts/dev.mjs",
     "doctor": "node scripts/doctor.mjs",
+    "demo:build": "node scripts/build-offline-demo.mjs",
+    "demo:serve": "npm run demo:build && tsx apps/demo/src/index.ts",
+    "demo:test": "vitest run shared/demo-assessment.test.ts apps/demo/src/app.test.ts tests/symphony-step2/step2-ui.test.ts --maxWorkers=1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --maxWorkers=2",
     "build": "vite build --config apps/web/vite.config.ts"
