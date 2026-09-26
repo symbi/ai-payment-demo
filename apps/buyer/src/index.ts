@@ -1,0 +1,10 @@
+import 'dotenv/config';
+import { readConfig } from './config.ts';
+import { createBuyerApp } from './app.ts';
+import { BuyerService } from './service.ts';
+import { createInterceptaScanner } from './intercepta.ts';
+const port = Number(process.env.BUYER_PORT ?? 4031);
+if (!Number.isSafeInteger(port) || port < 1024 || port > 65535) throw new Error('BUYER_PORT 无效');
+const config = readConfig(process.env);
+const service = new BuyerService(config, undefined, createInterceptaScanner(process.env.INTERCEPTA_API_KEY));
+createBuyerApp(config, service).listen(port, '127.0.0.1', () => console.log(`Buyer: http://127.0.0.1:${port} (payments disabled)`));

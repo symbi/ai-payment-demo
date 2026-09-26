@@ -1,0 +1,19 @@
+{
+  "kind": "public-sample",
+  "source": {
+    "filename": "ExampleVault.sol",
+    "sha256": "1f9fb6a40a10aed8b91c0370e527b2e35e54ad8e0c56e2f448c2277a2fedd810"
+  },
+  "metrics": {
+    "functions": 4,
+    "events": 2,
+    "modifiers": 1
+  },
+  "method": "Deterministic lexical declaration inventory of the bundled ExampleVault.sol only; comments and strings skipped, contract body depth checked.",
+  "limitations": [
+    "Only the bundled teaching sample is served; arbitrary source/address analysis is unsupported.",
+    "Not a Solidity compiler, semantic analysis, vulnerability scan, risk score, or safety assessment.",
+    "Counts named explicit declarations only; excludes constructor, generated getters, inheritance and runtime behavior.",
+    "This sample is not deployed; its source is not the payment recipient address or an Intercepta scan target."
+  ]
+}

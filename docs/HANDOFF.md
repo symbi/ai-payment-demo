@@ -1,0 +1,56 @@
+# Execution handoff — contract v1
+
+Authorized 2026-09-26: local basic demo first. This is personal work; no company code, accounts, keys or data. Reviewed and locally verified modules may be committed and pushed to the user's verified SYMBI personal repository. No public release, paid LLM calls or real-money payments. Do not fake development history or claim simulated results are live. User requested separate A/B Codex tasks. Keep Taskboard labels separate from actual task/thread binding.
+
+## Current control point — manual starts and module checkpoints
+
+QA reporting clarification: independent QA task `01a0d98f-4c49-7aa0-b8d9-4988f54198b3` reports results and defects to K02. K02 directs A/B fixes, hands the fixed snapshot back to QA for retest, then reports to the user. QA retains independent verification; M is not its approval gate. This supersedes earlier wording that QA routinely delivers directly to the user. Existing final-flow dependencies remain unchanged.
+
+Latest user clarification: K02 is an independent stage-02 delivery owner and reports/demonstrates directly to the user for acceptance. M is not an approval gate for K02. Informing M preserves cross-stage context only; it must not delay a stage-02 delivery. M retains overall direction and single-writer ownership of shared files. Stage 02 has delivered its locally demonstrated, independently reviewed basic page/backend flow (real 402, missing-key hold, zero signing/settlement); see ETH-35 for exact snapshot evidence. User acceptance, Git upload, personal-computer reproduction and real risk/payment remain separate uncompleted gates.
+
+Latest user decision: stage 02 has a dedicated coordinator K02, task `01a0d93a-adbc-7dc2-bb05-e41bf29afb86`, fully bound to ETH-35. K02 receives A/B evidence and reviews, checks integration, and maintains stage 02 handoffs; M retains overall/cross-stage decisions and shared-file ownership. Each A/B implementation task arranges an independent capable read-only reviewer, fixes findings through its original writer after an explicit start, then submits the exact reviewed snapshot to K02. Reviewers do not self-approve their own implementation. Reuse the ongoing B review and A findings; do not create duplicate review work. K02's first action is acceptance of this coordination handoff, not automatic new coding or stage 03 execution.
+
+Updated authorization, 2026-09-26: the user explicitly asked K02 to coordinate A/B through a working local demo and open it for inspection. K02 has dispatched ETH-25 to the existing B task: Chinese React/Vite page, real local interfaces and independent delta review. A handles any seller findings through its original writer. K02 may coordinate fixes and revalidation within this slice without requesting the same authorization again. Stage 03 and other cards still require their own applicable start and dependencies. A is task `01a0d923-7df1-7232-87b5-7bd2212a62bb`; B is task `01a0d923-90e3-7801-a43e-c4b00c829de6`. Both tasks run from `/Users/v-sheng.huang/sboai`; the repository is its `ai-payment-demo` child, not a claimed Codex task working directory.
+
+K02 owns unified local demo startup and browser presentation at 127.0.0.1 ports 5178 (web), 4031 (buyer) and 4032 (seller). Check existing listeners before starting; M and A/B must not independently start duplicate standard-port services. This authorization covers necessary local service startup, not dependency installation, paid calls, payments, GitHub push or stage 03. Root/package/lock/shared files and this handoff remain M's single-writer scope; route required changes to M. K02 reports that real local A/B HTTP integration passed with missing-key hold and zero signing/settlement; the page and user-visible demo remain pending until actually verified.
+
+For each deliverable module: self-tests → independent review of an exact snapshot → local visible demonstration → local commit → push to the verified personal repository → reproduce that commit on the user's personal computer. Fixes return to the original writer and affected checks rerun. Record reviewer identity and actual model/depth when known, not historical suggestions. Model price/rank alone is not acceptance evidence.
+
+The user reaffirmed `SYMBI`. The current GitHub CLI was verified as `ShengHuang21`; this repository has no remote. Do not push under the mismatched account, silently switch global login, or infer that browser login authorizes CLI credentials. No commit or push has happened. Repository ownership/authentication must be resolved before upload; default private. Never commit `.env`, `.runtime`, API keys or wallet secrets.
+
+Taskboard owner verified that complete existing-task identity binding is supported, but `Start planning` and `Execute next` create managed coordination/developer/validator conversations rather than resume existing A/B. The local Taskboard project has no workspace mapping, and its current `project map` command only affects cloud mapping. Until that product gap is resolved, use linked existing tasks plus explicit single-card instructions and evidence comments; do not claim managed Start works.
+
+## Scope and ownership
+
+Project `/Users/v-sheng.huang/sboai/ai-payment-demo` is new and separate from prior official x402 learning samples. M owns root config, lockfile, shared contracts and this handoff. A owns `apps/seller/` and `docs/working-log-A.md`. B owns `apps/buyer/`, `apps/web/` and `docs/working-log-B.md`. Ask M before shared edits. Both use the one root npm install. Do not run installs concurrently. Do not modify Taskboard product code.
+
+- M: ETH-10/11/12, current coordination task.
+- A: ETH-3 and ETH-13→14→15 seller implementation.
+- B: ETH-5 and ETH-19→20→21→16→17, then ETH-25 frontend; continue ETH-22/32/23/18/26 only when actual dependencies are ready and the user explicitly starts that card.
+- C/D: independent validation after a fixed integrated version. Do not mark `done`; self-verification is `in_review`.
+
+## Local interfaces
+
+TypeScript, React+Vite (127.0.0.1:5178), Express buyer (4031), Express seller (4032). Use localhost only. Shared fields in `shared/contracts.ts` v1. Npm scripts: `npm ci`, `npm run doctor`, `npm run typecheck`, `npm test`, `npm run build`, `npm run dev`. No Docker required. M pins versions and owns package-lock.
+
+Seller `GET /health` returns truthful readiness without secrets; `GET /api/weather` returns x402 v2 402 before payment, then 200 demo-fixture JSON only after SDK validation/settlement. Use @x402/express + ExactEvmScheme; configurable public test facilitator. Network eip155:84532, USDC 0x036CbD53842c5426634e7929541eC2318f3dCF7e, amount 1000 = 0.001 test USDC. Missing SELLER_PAY_TO gives 503, never invent a configured merchant. SDK tests can inject fake facilitator; never claim test doubles settled funds. A may consult the existing official source `/private/tmp/sheng-x402-official-learning` but not its .env or wallet files; document reuse.
+
+Buyer `GET /api/health` reports configuration booleans and seller connection. `POST /api/inspect` body `{requestId,prompt}` fetches fixed configured seller URL and parses 402 without signing. Returns PurchaseResult. `POST /api/pay` body `{requestId}` requires a server-held inspected request, rechecks live risk and identical terms before any signature; missing key / unsupported risk / disabled payments must hold. `GET /api/requests/:id` returns result. No arbitrary URL proxy, no browser-provided `allow`, no client-supplied signer or keys. Vite proxy `/api` to buyer. Bound request size, timeout and localhost origins; frontend rendering is text, not arbitrary HTML.
+
+## Basic gate — fail closed
+
+Check network/USDC/positive atomic amount ≤1000 and exact configured payTo locally. Intercepta Quick Scan Address must check that same payTo. Address scan is not a transaction/message/token scan. Actual response fields must be validated against current official documentation or an actual redacted response. No invented score threshold; unknown structures/statuses, timeout, missing key = hold. Real API risk data is mainnet; test payments are testnet. Do not attach risk of unrelated address to another recipient. No key is currently verified. No fake API result in the normal payment route. Inject fixtures only into tests or a completely separated, explicitly labelled offline preview that cannot sign.
+
+Private key belongs only in the backend signer. x402 automatic wrappers can sign: hook BEFORE payment creation, and enforce exact conditions inside guarded signer. LLM has no signer and cannot expand authorization. Initially return actual purchased JSON; if no authorized personal model, label `aiMode:not_configured` / manual tool request. Do not reuse Codex account credentials as an application API key. No real LLM calls this slice.
+
+Payment policy flag defaults false. Do not enable or run live payments while key/coverage unverified. Build/test the adapter without secrets. A timeout after signature is settlement_unknown; do not create a new payment blindly. Duplicate request ID must not repeat signing; reject ID reuse with changed intent. Client disconnect is not evidence of failed payment. Counters only report actual observed invocations, not inferred chain state.
+
+## User-visible first slice and evidence
+
+One understandable page: service readiness → view seller terms → risk decision/reason → payment/result status. Show missing configuration and blocked work; not a green mock success. Three final acceptance cases: live safe+payment+data; live risk blocked before sign; scan failure held before sign. Budget failures are additional policy tests, not a substitute for live risk rejection.
+
+At each card completion/pause, comment with Input/version; Output files/start command; tests actually run; Working Log path; remaining gaps; next recipient. Review current Task Capsule before execution using taskctl. Use exact existing CLI `/Users/v-sheng.huang/sboai/dashi-taskboard/cli/taskctl.mjs --runtime-file /Users/v-sheng.huang/sboai/dashi-taskboard/.data/launcher-runtime.json --json`; loopback may need escalation. Do not invent protected bindings or bypass a rejected mutation. No overwriting another task's claim. Use current version guard. Record actual Codex task ID after dispatch, not a model label as proof of execution.
+
+Checkpoint comments also record the reviewed commit or uncommitted content digest, independent review findings, visible demo evidence, local commit SHA, push outcome and personal-computer reproduction outcome. Unperformed steps remain unverified. A clean install in a second directory on this machine is not another-computer verification. Partial-module checks do not replace final C/D full-flow acceptance.
+
+References: https://ethglobal.com/events/tokyo2026/prizes/intercepta ; https://docs.x402.org/advanced-concepts/lifecycle-hooks ; https://docs.web3antivirus.io/reference/quick-scan-address

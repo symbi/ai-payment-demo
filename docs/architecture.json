@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {"title":"Payment Gate — Current Runtime", "locale":"en", "quality_profile":"showcase", "viewBox":[1390,650]},
+  "components": [
+    {"id":"browser","type":"frontend","label":"Buyer Web UI","sublabel":"React / Vite · localhost:5178","pos":[65,100],"size":[260,95]},
+    {"id":"buyer","type":"security","label":"Buyer Safety Backend","sublabel":"Express · localhost:4031","tag":"Payment and signing DISABLED","pos":[570,100],"size":[270,110]},
+    {"id":"seller","type":"backend","label":"Contract Insights Seller","sublabel":"Express / x402 · localhost:4032","tag":"Built-in sample, not a security audit","pos":[1080,100],"size":[275,110]},
+    {"id":"agent","type":"external","label":"Third-party Agent","sublabel":"PLANNED · not integrated","pos":[65,450],"size":[260,95]},
+    {"id":"risk","type":"external","label":"Intercepta Cloud API","sublabel":"Address scan · server-side key","tag":"Unknown coverage means HOLD","pos":[570,450],"size":[270,110]},
+    {"id":"payment","type":"external","label":"Facilitator + Testnet","sublabel":"TARGET · not active in this runtime","pos":[1080,450],"size":[275,95]}
+  ],
+  "boundaries":[{"kind":"region","label":"Your computer — three separate local programs","wraps":["browser","buyer","seller"],"pad":30}],
+  "connections":[
+    {"id":"request","from":"browser","to":"buyer","label":"1. Inspect / check"},
+    {"id":"quote","from":"buyer","to":"seller","label":"2. Request quote"},
+    {"id":"scan","from":"buyer","to":"risk","label":"3. Scan address","variant":"security","labelAt":[705,330]},
+    {"id":"settlement-plan","from":"seller","to":"payment","label":"Future settlement","variant":"dashed","labelAt":[1218,330]}
+  ],
+  "cards":[
+    {"dot":"cyan","title":"Response path","items":["Seller returns HTTP 402 payment requirements to the buyer backend.","Intercepta returns scan facts; buyer returns a held/denied result to the UI."]},
+    {"dot":"amber","title":"Not a completed purchase yet","items":["A successful API response is not proof that a payment is safe.","Live signing, settlement and an external Agent demonstration remain pending."]}
+  ]
+}
