@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Express } from 'express';
+import { createInterceptaScanner } from '../../buyer/src/intercepta.ts';
 import type { RiskScanner } from '../../buyer/src/intercepta.ts';
 import { PRIVATE_RISK_CANDIDATES } from '../../../shared/private-risk.ts';
 import { createPrivateRiskApp } from './app.ts';
@@ -178,4 +179,45 @@ describe('private scan server (in-memory Express only)', () => {
     const invalid = await inject(app(journalPath(), invalidScanner), 'POST', '/api/private-risk/scan', { candidateId: 'H1' });
     expect(invalid.json.records[0]).toMatchObject({ state: 'unavailable', risk: null });
   });
+});
+
+// Synthetic H1/G1-shaped failures, not the original private-machine responses.
+it('persists diagnostics across restart without resetting two consumed attempts', async () => {
+  const path = journalPath();
+  const transport = vi.fn<typeof fetch>()
+    .mockResolvedValueOnce(Response.json({ traits: {}, metadata: { secret: 'DO-NOT-SAVE' } }))
+    .mockResolvedValueOnce(Response.json({ message: 'DO-NOT-SAVE' }, { status: 429 }));
+  const instance = app(path, createInterceptaScanner('FAKE-KEY', transport));
+  await inject(instance, 'POST', '/api/private-risk/scan', { candidateId: 'H1' });
+  await inject(instance, 'POST', '/api/private-risk/scan', { candidateId: 'G1' });
+  const afterRestart = app(path, createInterceptaScanner('FAKE-KEY', transport));
+  const result = await inject(afterRestart, 'GET', '/api/private-risk/status');
+  expect(result.json.usedRequests).toBe(2);
+  expect(result.json.records[0].risk.scan).toMatchObject({ httpStatus: 200, diagnosticCode: 'schema-unsupported', schemaDiagnostic: { traitsType: 'object' } });
+  expect(result.json.records[1].risk.scan).toMatchObject({ httpStatus: 429, diagnosticCode: 'http-error' });
+  expect((await inject(afterRestart, 'POST', '/api/private-risk/scan', { candidateId: 'H1' })).status).toBe(409);
+  expect(transport).toHaveBeenCalledTimes(2);
+  expect(readFileSync(path, 'utf8')).not.toMatch(/DO-NOT-SAVE|FAKE-KEY/);
+});
+
+it('expands the authorized budget without resetting previous attempts or auto-scanning', async () => {
+  const path = journalPath();
+  const scanner = vi.fn<RiskScanner>(async (address, network) => observed(address, network));
+  const old = app(path, scanner);
+  for (const candidateId of ['H1', 'G1']) await inject(old, 'POST', '/api/private-risk/scan', { candidateId });
+  const expanded = createPrivateRiskApp({ journalPath: path, scanner, ready: true, message: 'test', html: '', maxRequests: 1000 });
+  expect((await inject(expanded, 'GET', '/api/private-risk/status')).json).toMatchObject({ maxRequests: 1000, usedRequests: 2 });
+  expect(scanner).toHaveBeenCalledTimes(2);
+  for (const candidate of PRIVATE_RISK_CANDIDATES.filter(c => !['H1', 'G1'].includes(c.id))) {
+    expect((await inject(expanded, 'POST', '/api/private-risk/scan', { candidateId: candidate.id })).status).toBe(200);
+  }
+  expect(scanner).toHaveBeenCalledTimes(7);
+  expect((await inject(expanded, 'POST', '/api/private-risk/scan', { candidateId: 'H1' })).status).toBe(409);
+  const reduced = app(path, scanner);
+  expect((await inject(reduced, 'GET', '/api/private-risk/status')).json.usedRequests).toBe(7);
+});
+it.each([0, -1, 1.5, 1001, NaN])('rejects invalid request budget %s before scanning', maxRequests => {
+  const scanner = vi.fn<RiskScanner>();
+  expect(() => createPrivateRiskApp({ journalPath: journalPath(), scanner, ready: true, message: '', html: '', maxRequests })).toThrow('Invalid scan request budget');
+  expect(scanner).not.toHaveBeenCalled();
 });

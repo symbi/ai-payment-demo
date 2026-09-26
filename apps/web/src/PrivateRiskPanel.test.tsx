@@ -39,8 +39,8 @@ it('renders unavailable records as failed evidence and keeps selected records se
   const unavailable = { candidateId: 'H1' as const, state: 'unavailable' as const, attemptedAt: '2026-09-27T01:00:00.000Z', risk: null };
   const failedHtml = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [unavailable] }))));
   const otherHtml = renderToStaticMarkup(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 2, records: [unavailable, completed('G1', 7)] }), 'G1')));
-  expect(failedHtml).toContain('未取得有效证据'); expect(failedHtml).not.toContain('暂缓（HOLD）：依据不足');
-  expect(otherHtml).toContain('>7<'); expect(otherHtml).toContain('本地检查产生的说明'); expect(otherHtml).not.toContain('>0<');
+  expect(failedHtml).toContain('未取得有效证据'); expect(failedHtml).toContain('暂缓（HOLD）：依据不足');
+  expect(otherHtml).toContain('>7<'); expect(otherHtml).not.toContain('本地检查产生的说明'); expect(otherHtml).not.toContain('>0<');
 });
 
 it('renders pending as unconfirmed and does not claim that it was never requested', () => {

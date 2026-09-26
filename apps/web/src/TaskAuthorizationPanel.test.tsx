@@ -25,7 +25,7 @@ it('renders missing configuration as unavailable rather than assuming a wallet',
 
 it('renders a ready form with blank budget inputs and confirmation', () => {
   const html = renderToStaticMarkup(createElement(TaskAuthorizationPanel, props(status())));
-  expect(html).toContain('保存任务许可'); expect(html).toContain('placeholder="例如 10.50"'); expect(html).toContain('value="30"'); expect(html).toContain('保存不代表付款或任务已开始');
+  expect(html).toContain('保存任务许可'); expect(html).toContain('placeholder="例如 10.50"'); expect(html).toContain('value="30"'); expect(html).toContain('保存不代表付款或任务已开始'); expect(html).toContain('Base Sepolia（测试网）'); expect(html).toContain('测试 USDC');
 });
 
 it('renders saved grant details as read-only and keeps accounting unconnected', () => {

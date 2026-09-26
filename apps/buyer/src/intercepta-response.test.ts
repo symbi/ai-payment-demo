@@ -40,7 +40,7 @@ it.each(['risk', 'name', 'txsCount', 'description'] as const)('rejects a trait m
 
 it.each([
   { risk: '12' }, { risk: NaN }, { risk: Infinity },
-  { name: 'unlisted_trait' }, { name: null },
+  { name: null },
   { txsCount: '3' }, { txsCount: -Infinity },
   { description: null }, { description: 3 },
 ])('rejects a trait with invalid field types or unknown name %#', change => {
@@ -54,8 +54,6 @@ it.each([
   { toxicScore: Infinity, traits: [] }, { toxicScore: -Infinity, traits: [] },
   { toxicScore: 0, traits: null }, { toxicScore: 0, traits: {} },
   { toxicScore: 0, traits: [null] }, { toxicScore: 0, traits: [[]] },
-  { toxicScore: 0, traits: [], extra: true },
-  { toxicScore: 0, traits: [validTrait, { ...validTrait, name: 'unlisted_trait' }] },
 ])('returns explicit unknown for malformed or incomplete response %#', value => {
   expect(parseInterceptaResponse(value)).toEqual(unknown);
 });

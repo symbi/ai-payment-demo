@@ -13,5 +13,11 @@ export function PrivateRiskDemo() {
     if (window.location.protocol === 'http:') void instance.refresh();
     return () => { active = false; instance.dispose(); client.current = null; };
   }, []);
-  return <><TaskAuthorizationDemo /><PrivateRiskPanel {...state} onSelect={id => client.current?.select(id)} onScan={() => { void client.current?.scan(); }} onRefresh={() => { void client.current?.refresh(); }} /></>;
+  return <>
+    <PrivateRiskPanel {...state} onSelect={id => client.current?.select(id)} onScan={() => { void client.current?.scan(); }} onRefresh={() => { void client.current?.refresh(); }} />
+    <details className="task-authorization-disclosure">
+      <summary>任务许可与预算</summary>
+      <TaskAuthorizationDemo />
+    </details>
+  </>;
 }

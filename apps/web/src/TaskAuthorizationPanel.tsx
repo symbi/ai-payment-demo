@@ -12,6 +12,8 @@ const atomicToUsdc = (value: string) => {
 };
 
 const displayAddress = (value: string | null) => value ?? '未配置';
+const displayNetwork = (value: string) => value === 'eip155:84532' ? `Base Sepolia（测试网）（${value}）` : value;
+const displayAsset = (value: string) => `测试 USDC（${value}）`;
 
 function Field({ label, value }: { label: string; value: string }) {
   return <div className="task-authorization-field"><dt>{label}</dt><dd>{value}</dd></div>;
@@ -66,7 +68,7 @@ export function TaskAuthorizationPanel({ status, loading, message, onSave, onRef
     finally { setSaving(false); }
   };
 
-  return <main className="task-authorization-panel" aria-labelledby="task-authorization-title">
+  return <section className="task-authorization-panel" aria-labelledby="task-authorization-title">
     <header className="task-authorization-hero">
       <p className="task-authorization-eyebrow">TASK PERMISSION / BUDGET</p>
       <h1 id="task-authorization-title">任务许可与预算</h1>
@@ -81,7 +83,7 @@ export function TaskAuthorizationPanel({ status, loading, message, onSave, onRef
         <Field label="执行器" value={context ? `${context.agentName}（${context.agentId}）` : '未加载'} />
         <Field label="付款账户" value={displayAddress(context?.account ?? null)} />
         <Field label="受控卖方" value={displayAddress(context?.payTo ?? null)} />
-        <Field label="网络 / 资产" value={context ? `${context.network} / ${context.asset}` : '未加载'} />
+        <Field label="网络 / 资产" value={context ? `${displayNetwork(context.network)} / ${displayAsset(context.asset)}` : '未加载'} />
       </dl>
       <p className="task-authorization-note">执行链尚未接通；保存不代表开始任务。地址仅作文本展示，不生成外链。</p>
     </section>
@@ -117,5 +119,5 @@ export function TaskAuthorizationPanel({ status, loading, message, onSave, onRef
     </section>
 
     <div className="task-authorization-actions"><button type="button" disabled={busy} onClick={onRefresh}>查询已有许可</button>{message && <p className="task-authorization-message" role="alert">{message}</p>}</div>
-  </main>;
+  </section>;
 }

@@ -17,6 +17,11 @@ export interface RiskResult {
   /** Transport facts only; receipt or a zero score does not establish safety or chain coverage. */
   scan?: {
     transport: 'received' | 'unavailable';
+    httpStatus?: number;
+    diagnosticCode?: import('./scan-diagnostic.ts').ScanDiagnosticCode;
+    schemaDiagnostic?: import('./scan-diagnostic.ts').SchemaDiagnostic;
+    unknownTraitsCount?: number;
+    additionalFieldsCount?: number;
     toxicScore?: number;
     /** Bounded observed count (0..100); not a safety decision. */
     traitsCount?: number;

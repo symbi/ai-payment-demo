@@ -20,6 +20,7 @@ import {
   CANDIDATE_NETWORK,
   isPrivateScanRecord,
   PRIVATE_SCAN_MAX_REQUESTS,
+  PRIVATE_SCAN_REQUEST_CEILING,
   PRIVATE_SCAN_REVISION,
   privateCandidate,
   type PrivateCandidateId,
@@ -28,6 +29,7 @@ import {
 } from '../../../shared/private-risk.ts';
 
 type PrivateRiskAppOptions = {
+  maxRequests?: number;
   journalPath: string;
   scanner: RiskScanner;
   ready: boolean;
@@ -50,7 +52,7 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[]):
 
 function validJournal(value: unknown): value is Journal {
   if (!object(value) || !exactKeys(value, ['version', 'records']) || value.version !== 1 || !Array.isArray(value.records)) return false;
-  if (value.records.length > PRIVATE_SCAN_MAX_REQUESTS || !value.records.every(isPrivateScanRecord)) return false;
+  if (value.records.length > PRIVATE_SCAN_REQUEST_CEILING || !value.records.every(isPrivateScanRecord)) return false;
   return new Set(value.records.map(record => record.candidateId)).size === value.records.length;
 }
 
@@ -117,7 +119,7 @@ function status(options: PrivateRiskAppOptions, records: PrivateScanRecord[]): P
     paymentEnabled: false,
     ready: options.ready,
     message: options.message,
-    maxRequests: PRIVATE_SCAN_MAX_REQUESTS,
+    maxRequests: options.maxRequests ?? PRIVATE_SCAN_MAX_REQUESTS,
     usedRequests: records.length,
     records,
   };
@@ -126,6 +128,15 @@ function status(options: PrivateRiskAppOptions, records: PrivateScanRecord[]): P
 function sanitizedRecord(candidateId: PrivateCandidateId, attemptedAt: string, raw: Awaited<ReturnType<RiskScanner>>): PrivateScanRecord {
   const scan = raw.scan && {
     transport: raw.scan.transport,
+    ...(raw.scan.httpStatus === undefined ? {} : { httpStatus: raw.scan.httpStatus }),
+    ...(raw.scan.diagnosticCode === undefined ? {} : { diagnosticCode: raw.scan.diagnosticCode }),
+    ...(raw.scan.schemaDiagnostic === undefined ? {} : { schemaDiagnostic: {
+      topLevelKeys: [...raw.scan.schemaDiagnostic.topLevelKeys], otherKeysCount: raw.scan.schemaDiagnostic.otherKeysCount,
+      toxicScoreType: raw.scan.schemaDiagnostic.toxicScoreType, traitsType: raw.scan.schemaDiagnostic.traitsType,
+      ...(raw.scan.schemaDiagnostic.traitsCount === undefined ? {} : { traitsCount: raw.scan.schemaDiagnostic.traitsCount }),
+    } }),
+    ...(raw.scan.unknownTraitsCount === undefined ? {} : { unknownTraitsCount: raw.scan.unknownTraitsCount }),
+    ...(raw.scan.additionalFieldsCount === undefined ? {} : { additionalFieldsCount: raw.scan.additionalFieldsCount }),
     requestedNetwork: raw.scan.requestedNetwork,
     coverage: raw.scan.coverage,
     semantics: raw.scan.semantics,
@@ -156,6 +167,7 @@ function unavailableRecord(candidateId: PrivateCandidateId, attemptedAt: string)
 }
 
 export function createPrivateRiskApp(options: PrivateRiskAppOptions): Express {
+  if (options.maxRequests !== undefined && (!Number.isInteger(options.maxRequests) || options.maxRequests < 1 || options.maxRequests > PRIVATE_SCAN_REQUEST_CEILING)) throw new Error('Invalid scan request budget');
   const app = express();
   app.disable('x-powered-by');
   app.use((request, response, next) => {
@@ -199,7 +211,7 @@ export function createPrivateRiskApp(options: PrivateRiskAppOptions): Express {
         if (!options.ready) rejectionStatus = 503;
         else if (journal.records.some(record => record.state === 'pending')) rejectionStatus = 409;
         else if (journal.records.some(record => record.candidateId === candidate.id)) rejectionStatus = 409;
-        else if (journal.records.length >= PRIVATE_SCAN_MAX_REQUESTS) rejectionStatus = 429;
+        else if (journal.records.length >= (options.maxRequests ?? PRIVATE_SCAN_MAX_REQUESTS)) rejectionStatus = 429;
         if (!rejectionStatus) {
           journal.records.push({ candidateId: candidate.id, state: 'pending', attemptedAt, risk: null });
           writeJournal(options.journalPath, journal);

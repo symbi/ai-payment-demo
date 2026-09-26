@@ -33,7 +33,9 @@ export function checkDemo({
     }
   });
   const page = existsSync(join(root, 'docs', 'private-risk.html'));
-  const environment = env.PRIVATE_RISK_MACHINE === 'personal'
+  const budgetText = env.PRIVATE_RISK_MAX_REQUESTS ?? '3';
+  const requestBudget = /^[1-9][0-9]{0,3}$/.test(budgetText) && Number(budgetText) <= 1000;
+  const environment = requestBudget && env.PRIVATE_RISK_MACHINE === 'personal'
     && env.PRIVATE_RISK_FREE_QUOTA_CONFIRMED === 'true'
     && env.PRIVATE_RISK_PRIOR_REQUESTS === '0';
   const apiKey = typeof env.INTERCEPTA_API_KEY === 'string'

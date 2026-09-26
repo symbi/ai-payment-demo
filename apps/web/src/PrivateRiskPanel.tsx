@@ -1,6 +1,8 @@
 import type { PrivateRiskPanelProps, PrivateScanRecord, PrivateScanStatus } from '../../../shared/private-risk.ts';
 import { PRIVATE_RISK_CANDIDATES, privateCandidate } from '../../../shared/private-risk.ts';
 import type { RiskResult } from '../../../shared/contracts.ts';
+import { isSchemaDiagnostic } from '../../../shared/scan-diagnostic.ts';
+import { RiskReceiptDownload } from './RiskReceiptDownload.tsx';
 import './private-risk.css';
 
 const judgmentReason = '仍需确认返回字段的含义和适用网络，暂不能据此许可付款。这表示依据不足，不表示地址已认定危险。我们不另算综合分。';
@@ -9,33 +11,77 @@ function selectedRecord(status: PrivateScanStatus | null, candidateId: PrivateRi
   return status?.records.find(record => record.candidateId === candidateId);
 }
 
+const diagnosticReasons = {
+  'http-error': '扫描服务返回非成功 HTTP 状态；尚无可用扫描证据。',
+  'schema-unsupported': '已收到响应，但核心字段结构尚不受支持，不能提取有效扫描证据。',
+  'body-invalid': '响应正文无法按受支持的 JSON 格式读取；未展示原始正文。',
+  timeout: '扫描请求超时；没有自动重试。',
+  'transport-error': '请求传输失败；尚无可用扫描证据。',
+  configuration: '本地扫描配置或地址检查未通过。',
+  observed: '已提取支持的原始字段；风险含义和网络覆盖仍待确认。',
+};
+const legacyReasons = new Map([
+  ['Invalid scan address.', diagnosticReasons.configuration],
+  ['API key unavailable.', diagnosticReasons.configuration],
+  ['Scan service unavailable.', '旧记录显示扫描服务不可用；未记录 HTTP 状态。'],
+  ['Unsupported scan response. Review required.', diagnosticReasons['schema-unsupported']],
+  ['Scan timed out. No automatic retry.', diagnosticReasons.timeout],
+  ['Scan unavailable. Review required.', '旧记录显示扫描不可用；未记录更详细的失败类别。'],
+]);
+
+function ScanDiagnostics({ risk }: { risk: RiskResult }) {
+  const scan = risk.scan;
+  const reason = scan?.diagnosticCode && Object.hasOwn(diagnosticReasons, scan.diagnosticCode)
+    ? diagnosticReasons[scan.diagnosticCode]
+    : risk.reasons.map(item => legacyReasons.get(item)).find(Boolean)
+      ?? (risk.source === 'live' ? diagnosticReasons.observed : '旧记录未保存详细诊断；不推断失败原因。');
+  const schema = isSchemaDiagnostic(scan?.schemaDiagnostic) ? scan.schemaDiagnostic : undefined;
+  return <div className="private-risk-scan-diagnostics">
+    <p><strong>扫描诊断</strong>：{reason}</p>
+    <dl>
+      <div><dt>HTTP 状态</dt><dd>{scan?.httpStatus ?? '未记录'}</dd></div>
+      {schema && <>
+        <div><dt>顶层已知字段名</dt><dd>{schema.topLevelKeys.join('、') || '未观察到支持字段'}</dd></div>
+        <div><dt>其他顶层字段数量</dt><dd>{schema.otherKeysCount}</dd></div>
+        <div><dt>toxicScore 字段类型</dt><dd>{schema.toxicScoreType}</dd></div>
+        <div><dt>traits 字段类型</dt><dd>{schema.traitsType}</dd></div>
+        {schema.traitsCount !== undefined && <div><dt>响应 traits 数组长度</dt><dd>{schema.traitsCount}</dd></div>}
+      </>}
+    </dl>
+    {schema && <p className="private-risk-muted">结构摘要仅包含字段类型和数量；不显示未知字段名、自由文本或原始响应。</p>}
+  </div>;
+}
+
 function renderScan(risk: RiskResult) {
   const scan = risk.scan;
-  if (!scan || scan.transport === 'unavailable') return <p className="private-risk-muted">未取得有效扫描证据。</p>;
+  if (!scan || risk.source !== 'live' || scan.transport === 'unavailable') return <p className="private-risk-muted">未取得有效扫描证据。</p>;
   const score = scan.toxicScore === undefined ? '未确认' : String(scan.toxicScore);
   const count = scan.traitsCount === undefined ? '未确认' : String(scan.traitsCount);
   const labels = scan.traitLabels ?? [];
   return <div className="private-risk-scan-facts">
     <dl>
       <div><dt>Intercepta 原始 toxicScore</dt><dd>{score}</dd></div>
-      <div><dt>返回的风险条目数量</dt><dd>{count}</dd></div>
-      <div><dt>展示的标签</dt><dd>{labels.length ? labels.join('、') : scan.traitsCount === 0 ? '未返回标签，不代表安全' : '未确认'}</dd></div>
+      <div><dt>返回的风险条目总数</dt><dd>{count}</dd></div>
+      <div><dt>展示的已知标签</dt><dd>{labels.length ? labels.join('、') : scan.traitsCount === 0 ? '未返回标签，不代表安全' : '没有可展示的已知标签'}</dd></div>
+      <div><dt>未知标签条目数量</dt><dd>{scan.unknownTraitsCount ?? '旧记录未记录'}</dd></div>
+      <div><dt>忽略的新增字段数量</dt><dd>{scan.additionalFieldsCount ?? '旧记录未记录'}</dd></div>
       <div><dt>本地请求网络</dt><dd>{scan.requestedNetwork}（不代表供应商已确认覆盖）</dd></div>
     </dl>
-    <p className="private-risk-muted">分数量纲待确认，不换算为百分制或风险等级；0 不等于安全。数量由返回的 traits 列表计数，标签从其中提取。</p>
+    <p className="private-risk-muted">分数量纲待确认，不换算为百分制或风险等级；0 不等于安全。总数包含未知标签条目；仅展示已知的允许标签。</p>
     {scan.traitsCount !== undefined && labels.length < scan.traitsCount
-      ? <p className="private-risk-muted">仅展示前 {labels.length} 条允许标签；截断不代表全量。</p> : null}
+      ? <p className="private-risk-muted">当前展示 {labels.length} 个已知标签；未知标签或展示数量上限可能导致省略，不代表全量。</p> : null}
   </div>;
 }
 
 function Result({ record }: { record: PrivateScanRecord }) {
-  if (record.state === 'pending') return <div className="private-risk-state private-risk-pending"><strong>尚未确认</strong><p>原记录处于 pending，结果尚未确认；不宣称未请求，也不自动重试。</p></div>;
-  if (record.state === 'unavailable' || !record.risk) return <div className="private-risk-state private-risk-unavailable"><strong>未取得有效证据</strong><p>这次记录没有可用的真实扫描证据，不能据此判断地址安全或危险。</p></div>;
+  if (record.state === 'pending') return <div className="private-risk-state private-risk-pending"><strong>尚未确认</strong><p>原记录处于 pending，结果尚未确认；不宣称未请求，也不自动重试。</p><p>暂缓（HOLD）：依据不足</p></div>;
+  if (!record.risk) return <div className="private-risk-state private-risk-unavailable"><strong>未取得有效证据</strong><p>这次记录没有可用的真实扫描证据，不能据此判断地址安全或危险。</p><p>旧记录未保存详细诊断；不推断失败原因。</p><p>暂缓（HOLD）：依据不足</p></div>;
   const risk = record.risk;
   return <div className="private-risk-result" aria-live="polite">
     <section aria-labelledby="private-risk-intercepta-title">
       <h3 id="private-risk-intercepta-title">Intercepta 原始结果</h3>
       <p className="private-risk-source">来源：{risk.source === 'live' ? '真实API返回（本机保存的上次结果）' : '未取得有效证据'}</p>
+      <ScanDiagnostics risk={risk} />
       {renderScan(risk)}
       <p className="private-risk-time"><strong>本地接收时间</strong>：{risk.checkedAt}（不是供应商更新时间；供应商更新时间/覆盖未知）</p>
     </section>
@@ -43,7 +89,7 @@ function Result({ record }: { record: PrivateScanRecord }) {
       <h3 id="private-risk-judgment-title">我们的判断</h3>
       <p className="private-risk-hold">暂缓（HOLD）：依据不足</p>
       <p>{judgmentReason}</p>
-      {risk.reasons.length > 0 && <details><summary>查看本地检查说明</summary><ul>{risk.reasons.map((reason, index) => <li key={`${reason}-${index}`}>{reason}</li>)}</ul></details>}
+      <details><summary>查看本地检查说明</summary><p>只展示受支持的诊断类别和结构事实；已有记录不会触发重新扫描。</p></details>
     </section>
   </div>;
 }
@@ -54,8 +100,8 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
   const hasPending = !!status?.records.some(item => item.state === 'pending');
   const exhausted = status ? status.usedRequests >= status.maxRequests : false;
   const scanDisabled = loading || !status || !status.ready || !!record || exhausted || hasPending;
-  const scanDisabledReason = !status ? '尚未取得私人扫描状态。'
-    : !status.ready ? status.message || '私人扫描入口尚未就绪。'
+  const scanDisabledReason = !status ? '尚未取得地址评估状态。'
+    : !status.ready ? status.message || '地址评估尚未就绪。'
       : hasPending ? '已有扫描处于 pending，先查询已有结果。'
         : exhausted ? `扫描次数已用尽（${status.usedRequests}/${status.maxRequests}）。`
           : record ? '该地址已有记录，不再重复扫描。' : '';
@@ -94,6 +140,8 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
       <section className="private-risk-card" aria-labelledby="private-risk-current-title">
         <div className="private-risk-step"><span>03</span><div><p>结果和原因</p><h2 id="private-risk-current-title">当前记录</h2></div></div>
         {!record ? <div className="private-risk-empty"><strong>{status ? '本机暂无该地址记录' : '尚未取得扫描记录'}</strong><p>{status ? '此记录库中没有该地址的结果。' : '先查询私人电脑的已有记录，不能据此断定此前没有扫描。'}不填充 0，也不生成合成结果。</p></div> : <Result record={record} />}
+        <div className="private-risk-actions"><RiskReceiptDownload status={status} candidateId={selectedId} /></div>
+        <p className="private-risk-note">摘要来自已有记录，下载不会重新扫描。</p>
       </section>
     </div>
   </main>;

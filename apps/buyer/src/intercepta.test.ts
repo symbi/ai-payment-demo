@@ -14,7 +14,7 @@ it('sends one fixed-host authenticated address request and keeps zero score held
   expect(transport.mock.calls[0][1]).toMatchObject({ redirect: 'error', credentials: 'omit', headers: { 'X-API-KEY': 'FAKE-TEST-KEY' } });
   expect(JSON.stringify(result)).not.toContain('FAKE-TEST-KEY');
 });
-it.each([null, {}, { toxicScore: '0', traits: [] }, { toxicScore: NaN, traits: [] }, { toxicScore: Infinity, traits: [] }, { toxicScore: 0, traits: ['unknown'] }, { toxicScore: 0, traits: [{}] }, { toxicScore: 0, traits: {} }, { toxicScore: 0, traits: [], allow: true }])('rejects unobserved schema %#', payload => { expect(parseQuickScan(payload)).toBeUndefined(); });
+it.each([null, {}, { toxicScore: '0', traits: [] }, { toxicScore: NaN, traits: [] }, { toxicScore: Infinity, traits: [] }, { toxicScore: 0, traits: ['unknown'] }, { toxicScore: 0, traits: [{}] }, { toxicScore: 0, traits: {} }])('rejects unobserved schema %#', payload => { expect(parseQuickScan(payload)).toBeUndefined(); });
 it('records finite score as a fact without inventing a safe threshold', async () => {
   const result = await createInterceptaScanner('FAKE', async () => Response.json({ toxicScore: -123.5, traits: [] }))(address, network);
   expect(result.decision).toBe('hold'); expect(result.scan?.toxicScore).toBe(-123.5);

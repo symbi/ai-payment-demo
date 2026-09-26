@@ -27,7 +27,7 @@ export type InterceptaTrait = {
 };
 
 export type InterceptaResponse =
-  | { kind: 'observed'; toxicScore: number; traits: InterceptaTrait[] }
+  | { kind: 'observed'; toxicScore: number; traits: InterceptaTrait[]; unknownTraitsCount?: number; additionalFieldsCount?: number }
   | { kind: 'unknown'; reason: 'invalid-response' };
 
 const traitNames: ReadonlySet<string> = new Set(INTERCEPTA_TRAIT_NAMES);
@@ -45,7 +45,7 @@ function isFiniteNumber(value: unknown): value is number {
 /** Validate documented facts only. This function assigns no risk decision or score threshold. */
 export function parseInterceptaResponse(value: unknown): InterceptaResponse {
   try {
-    if (!isRecord(value) || Object.keys(value).length !== 2 ||
+    if (!isRecord(value) ||
         !Object.hasOwn(value, 'toxicScore') || !Object.hasOwn(value, 'traits') ||
         !isFiniteNumber(value.toxicScore) || !Array.isArray(value.traits) ||
         value.traits.length > MAX_INTERCEPTA_TRAITS) {
@@ -53,12 +53,14 @@ export function parseInterceptaResponse(value: unknown): InterceptaResponse {
     }
 
     const traits: InterceptaTrait[] = [];
+    let unknownTraitsCount = 0;
     for (const trait of value.traits) {
       if (!isRecord(trait) || !isFiniteNumber(trait.risk) || typeof trait.name !== 'string' ||
-          !traitNames.has(trait.name) || !isFiniteNumber(trait.txsCount) ||
+          trait.name.length === 0 || trait.name.length > 120 || !isFiniteNumber(trait.txsCount) ||
           typeof trait.description !== 'string') {
         return { kind: 'unknown', reason: 'invalid-response' };
       }
+      if (!traitNames.has(trait.name)) { unknownTraitsCount++; continue; }
       traits.push({
         risk: trait.risk,
         name: trait.name as InterceptaTraitName,
@@ -67,7 +69,10 @@ export function parseInterceptaResponse(value: unknown): InterceptaResponse {
       });
     }
 
-    return { kind: 'observed', toxicScore: value.toxicScore, traits };
+    return { kind: 'observed', toxicScore: value.toxicScore, traits,
+      ...(unknownTraitsCount ? { unknownTraitsCount } : {}),
+      ...(Object.keys(value).length > 2 ? { additionalFieldsCount: Object.keys(value).length - 2 } : {}),
+    };
   } catch {
     return { kind: 'unknown', reason: 'invalid-response' };
   }
