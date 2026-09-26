@@ -2,6 +2,20 @@
 
 Authorized 2026-09-26: local basic demo first. This is personal work; no company code, accounts, keys or data. Reviewed and locally verified modules may be committed and pushed to the user's verified SYMBI personal repository. No public release, paid LLM calls or real-money payments. Do not fake development history or claim simulated results are live. User requested separate A/B Codex tasks. Keep Taskboard labels separate from actual task/thread binding.
 
+## Task permission preflight handoff — current boundary
+
+The existing private entry at `127.0.0.1:47915` remains the only entry that can save a TaskGrant or perform an address assessment. These are separate records and separate actions: opening the page, viewing existing results, and saving permission do not scan an address. The existing buyer API at `127.0.0.1:4031` and buyer web page at `127.0.0.1:5178` are the connected checkout path; it is preflight-only and reads the server-held permission. It does not construct a scanner, save a Grant, write either budget journal, or create a ledger, signature, transaction, or payment.
+
+The private entry and buyer must refer to the same checkout/root identity and the same public `BUYER_ADDRESS` and `SELLER_PAY_TO`. A saved permission is usable only when its task, account, recipient, network, asset, resource, and quoted intent match. A different checkout has a different journal; it must HOLD rather than copy, reset, or recreate the old journal. Preserve the existing scan journal, including any H1/G1/H2/G2 records already present. The H2 parser fix is included from published commit `2522289`; this new preflight candidate has not been published. Do not rescan existing candidates, and do not treat candidate notes as provider evidence.
+
+Before any private-machine handoff, the existing `demo:check` may be used as a no-network preparation check. It checks local prerequisites and configuration shape only; `local-preparation-only` is not evidence that a Grant scope matches, the backend is ready, the seller is ready, the provider is reachable, or a real risk decision was obtained. Keep the private live entry off company machines. No automatic start, retry, or real verification is implied.
+
+On the private computer only, the existing `npm run demo:live` serves the address-assessment/Grant page, while `npm run dev` starts seller, buyer and the buyer web page from that same project directory. Do not run the latter on the company computer: it includes the seller entry, not just an offline frontend. Obtain a quote in the buyer page, then use **Check request**; this new buyer path reads the saved Grant and always stops before scanning or execution. Existing expired or mismatched Grants remain HOLD; do not delete them to force a pass.
+
+The connected page may show the quote and recipient, the permission preflight contract/reason, and—only for a passing scope check—the Grant ID, intent hash, and checked atomic amount. It may also show separately labelled risk evidence or unavailable/fixture status. A passed check is scope evidence only: it is not remaining budget, risk approval, payment confirmation, report delivery, or execution permission. The page must keep payment disabled and make unknown or stale results explicit.
+
+Budget and execution capabilities remain unconnected. Accounting stays `not_connected`; spent, reserved, available, and wallet balances are unknown. Saving a new ledger fact does not enable execution. There is no Grant renewal or revocation capability in this handoff, and no change to payment core, quota UI, infrastructure, or scan journals is authorized.
+
 ## Current control point — manual starts and module checkpoints
 
 QA reporting clarification: independent QA task `01a0d98f-4c49-7aa0-b8d9-4988f54198b3` reports results and defects to K02. K02 directs A/B fixes, hands the fixed snapshot back to QA for retest, then reports to the user. QA retains independent verification; M is not its approval gate. This supersedes earlier wording that QA routinely delivers directly to the user. Existing final-flow dependencies remain unchanged.

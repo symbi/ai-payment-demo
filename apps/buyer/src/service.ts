@@ -1,3 +1,5 @@
+import type { TaskPaymentPreflightChecker } from './task-payment-preflight.ts';
+import { isTaskPaymentPreflight } from '../../../shared/task-payment-preflight.ts';
 import { CONTRACT_VERSION, PRICE_ATOMIC, RESOURCE_PATH, TEST_NETWORK, TEST_USDC, type PurchaseResult } from '../../../shared/contracts.ts';
 import type { BuyerConfig } from './config.ts';
 import { checkPolicy, isAddress } from './policy.ts';
@@ -12,7 +14,7 @@ interface Entry { prompt: string; result: PurchaseResult; quote?: Quote; inspect
 export class BuyerService {
   private entries = new Map<string, Entry>();
   private protectedPayment?: ProtectedPayment;
-  constructor(private config: BuyerConfig, private seller = new SellerClient(config.sellerUrl), private scan: RiskScanner = async (address, network) => scanUnavailable(address, network, 'Scan adapter unavailable.'), payment?: TestPaymentDependencies) {
+  constructor(private config: BuyerConfig, private seller = new SellerClient(config.sellerUrl), private scan: RiskScanner = async (address, network) => scanUnavailable(address, network, 'Scan adapter unavailable.'), payment?: TestPaymentDependencies, private readonly preflight?: TaskPaymentPreflightChecker) {
     if (payment?.testFixtureOnly === true) this.protectedPayment = new ProtectedPayment(config.sellerUrl, payment);
   }
   async health() {
@@ -75,6 +77,16 @@ export class BuyerService {
       if (quote.fingerprint !== entry.quote.fingerprint) { hold(entry.result, '卖方付款条件已变化，原检查失效；请查看新的请求，不会自动付款'); return; }
       const policy = checkPolicy(quote.terms, this.config.payTo);
       if (policy.decision !== 'allow') { this.evaluate(entry.result); return; }
+      if (this.preflight) {
+        const result = await this.preflight(quote);
+        if (!isTaskPaymentPreflight(result)) { hold(entry.result, '许可检查结果无效；未扫描、未签名，不自动重试'); return; }
+        entry.result.grantPreflight = result;
+        hold(entry.result, result.passed
+          ? '已保存许可与本次付款意图范围匹配；余额、预算预留及执行尚未接通，保持暂停'
+          : `任务许可预检未通过（${result.code}）；保持暂停，不自动重试`);
+        event(entry.result, 'grant_preflight', '后端已检查保存的任务许可；未扫描、未占用预算、未签名或付款');
+        return;
+      }
       if (this.protectedPayment) {
         const { execution, data } = await this.protectedPayment.execute(entry.result.requestId, entry.prompt, quote);
         entry.result.execution = execution;

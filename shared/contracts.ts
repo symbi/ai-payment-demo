@@ -96,6 +96,8 @@ export interface PurchaseResult {
   paymentEnabled: boolean; aiMode: 'not_configured' | 'live';
   /** Absent on legacy responses: execution is unreported, NOT proven unsigned/unpaid. */
   execution?: ProtectedPaymentOutcome;
+  /** Latest local scope check; never a payment or available-budget authorization. */
+  grantPreflight?: import('./task-payment-preflight.ts').TaskPaymentPreflight;
 }
 export interface WeatherData {
   source: 'demo-fixture'; city: 'Tokyo'; weather: string; temperatureC: number;

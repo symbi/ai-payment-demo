@@ -1,5 +1,6 @@
 import type { PurchaseResult } from '../../../shared/contracts.ts';
 import { TEST_USDC } from '../../../shared/contracts.ts';
+import type { TaskPreflightCode } from '../../../shared/task-payment-preflight.ts';
 import { displayAmount, executionUnknown } from './api.ts';
 import { PaymentCheck } from './PaymentCheck.tsx';
 import './payment-check.css';
@@ -11,19 +12,32 @@ interface Props {
 }
 // Project only declared public fields, including every nested object.
 const publicFields = (value: object | undefined, keys: string[]) => value ? Object.fromEntries(keys.map(key => [key, (value as Record<string, unknown>)[key]])) : undefined;
-const responseFacts = (result: PurchaseResult) => ({
+const grantPreflightFacts = (result: PurchaseResult, include: boolean) => !include || !result.grantPreflight ? undefined : {
+  ...publicFields(result.grantPreflight, ['contractRevision', 'passed', 'code', 'paymentEnabled', 'executionConnected']),
+  ...(result.grantPreflight.passed ? publicFields(result.grantPreflight, ['grantId', 'intentHash', 'amountAtomic']) : {}),
+};
+const responseFacts = (result: PurchaseResult, includeGrantPreflight: boolean) => ({
   ...publicFields(result, ['requestId', 'status', 'decision', 'reasons']),
   terms: publicFields(result.terms, ['scheme', 'network', 'asset', 'amount', 'payTo']),
   risk: result.risk ? { ...publicFields(result.risk, ['decision', 'source', 'reasons', 'address', 'checkedAt', 'provider']), scan: publicFields(result.risk.scan, ['transport', 'toxicScore', 'traitsCount', 'requestedNetwork', 'coverage', 'semantics']) } : undefined,
   execution: result.execution ? { ...publicFields(result.execution, 'identity' in result.execution ? ['identity', 'decision', 'reasonCodes', 'reasons', 'checkedQuoteHash', 'signingInputHash', 'signing', 'submission', 'settlement', 'retryAllowed', 'taskComplete'] : ['operationId', 'decision', 'reasonCodes', 'reasons', 'checkedQuoteHash', 'signingInputHash', 'signing', 'submission', 'settlement', 'retryAllowed', 'taskComplete']), evidence: publicFields(result.execution.evidence, ['source', 'evidenceId', 'address', 'checkedAt', 'requestedPaymentNetwork', 'providerEvidenceNetwork', 'coverage', 'semantics']) } : undefined,
+  grantPreflight: grantPreflightFacts(result, includeGrantPreflight),
 });
 const executionLabel = (value?: string) => ({ not_signed: 'Not signed', signed: 'Signed', not_submitted: 'Not submitted', submitted: 'Submitted', not_settled: 'Not settled', settled: 'Settled', failed: 'Failed', unknown: 'Unknown' }[value ?? ''] ?? 'Unknown · Not reported');
 const sourceLabel = (source?: string) => source === 'live' ? 'Live provider evidence' : source === 'fixture' ? 'Fixture evidence · Not live' : 'Unknown · No risk evidence';
+const preflightReason: Record<TaskPreflightCode, string> = {
+  passed: 'Scope matched', not_configured: 'Task permission is not configured', grant_missing: 'Task permission is missing',
+  grant_unavailable: 'Task permission is unavailable', invalid_quote: 'Quote is invalid', invalid_grant: 'Task permission is invalid',
+  invalid_intent: 'Payment intent is invalid', invalid_clock: 'Clock input is invalid', grant_not_started: 'Task permission is not active yet',
+  grant_expired: 'Task permission has expired', scope_mismatch: 'Task permission does not match this scope', amount_exceeds_limit: 'Amount exceeds the per-transaction limit',
+};
 export function LivePaymentCheck(props: Props) {
   const { result, uncertain, requestId, busy, error, serviceReady, canCheck, checked, paymentDisabled, onQuote, onCheck, onQuery } = props;
   const terms = result?.terms; const risk = result?.risk; const execution = result?.execution;
   const identityUnavailable = !!execution && 'identity' in execution && execution.identity === 'unavailable';
   const unknown = uncertain || executionUnknown(result);
+  const preflightStale = !!result?.grantPreflight && (unknown || !!busy);
+  const preflight = !unknown && !busy ? result?.grantPreflight : undefined;
   const evidence = execution?.evidence;
   const source = evidence?.source ?? risk?.source;
   const amount = terms ? terms.asset.toLowerCase() === TEST_USDC.toLowerCase() ? `${displayAmount(terms.amount)} test USDC` : `${terms.amount} atomic · Unsupported asset` : 'Awaiting quote';
@@ -41,8 +55,8 @@ export function LivePaymentCheck(props: Props) {
       <p className="payment-scope">Network: {terms?.network ?? 'Awaiting quote'}. Risk check: recipient. Not a contract audit.</p>
       <h2 className="flow-section-title">2 · Payment decision</h2>
       <div className="check-action">
-        {!requestId ? <button className="primary" disabled={!!busy || !serviceReady || unknown} onClick={onQuote}>Get quote <span aria-hidden="true">→</span></button> : <button className="primary" disabled={!!busy || !canCheck || unknown} onClick={onCheck}>{busy === 'pay' ? 'Checking…' : 'Check risk'} <span aria-hidden="true">→</span></button>}
-        <p>{paymentDisabled ? 'Explicit check · May contact Intercepta once.' : 'Check unavailable · Runtime mode unconfirmed.'}</p>
+        {!requestId ? <button className="primary" disabled={!!busy || !serviceReady || unknown} onClick={onQuote}>Get quote <span aria-hidden="true">→</span></button> : <button className="primary" disabled={!!busy || !canCheck || unknown} onClick={onCheck}>{busy === 'pay' ? 'Checking…' : 'Check request'} <span aria-hidden="true">→</span></button>}
+        <p>{paymentDisabled ? 'Explicit backend check · No automatic payment.' : 'Check unavailable · Runtime mode unconfirmed.'}</p>
       </div>
       {!serviceReady && <p className="payment-scope">Service not ready. See Details.</p>}
       <div className={`check-result ${unknown ? 'result-pause' : decision === 'deny' ? 'result-block' : 'result-pending'}`} aria-live="polite">
@@ -52,11 +66,23 @@ export function LivePaymentCheck(props: Props) {
         {error && <p role="alert">{error}</p>}
         {!unknown && execution?.decision === 'allow' && <p>Permission is not payment confirmation.</p>}
       </div>
+      <dl className="decision-basis" aria-label="Task permission scope check">
+        <div><dt>Task permission scope check</dt><dd>
+          <strong>{preflightStale ? 'Unknown · Previous result is not current' : !preflight ? 'Not reported · Legacy response' : preflight.passed ? 'Passed · Scope only' : 'Paused · Scope check did not pass'}</strong>
+          <span>{preflightStale ? 'Wait for the current response before using scope-check facts.' : preflight ? `Reason code: ${preflight.code} · ${preflightReason[preflight.code]}.` : 'This response does not include the server-owned scope check.'}</span>
+          {preflight?.passed && <dl>
+            <div><dt>Grant</dt><dd><code>{preflight.grantId}</code></dd></div>
+            <div><dt>Intent hash</dt><dd><code>{preflight.intentHash}</code></dd></div>
+            <div><dt>Checked amount</dt><dd><code>{preflight.amountAtomic}</code> atomic</dd></div>
+          </dl>}
+          <span>A passed scope check is not remaining budget, risk approval, payment, or execution permission. Budget accounting and execution are not connected.</span>
+        </dd></div>
+      </dl>
       <div className="payment-limitations"><p>{paymentDisabled ? 'Payment is disabled.' : 'Payment mode is unconfirmed. Checking is unavailable.'}</p><p>{!source || source === 'unavailable' ? 'Risk: Unknown. No usable evidence.' : `${source === 'fixture' ? 'Fixture evidence only. ' : ''}${evidence?.semantics === 'verified' ? '' : 'Risk meaning is unconfirmed. '}${evidence?.coverage === 'verified' ? '' : 'Network coverage is unconfirmed.'}`}</p></div>
       <dl className="decision-basis" aria-label="Decision basis">
         <div><dt>Risk evidence</dt><dd><strong>{unknown ? 'Unknown · Latest state unconfirmed' : sourceLabel(source)}</strong><span>{evidence?.semantics === 'verified' && !unknown ? 'Backend reports interpreted evidence; receipt alone is not approval.' : 'Meaning unknown. A response or zero score is not approval.'}</span></dd></div>
         <div><dt>Payment content</dt><dd><strong>Unknown · Match not reported</strong><span>{!unknown && execution?.checkedQuoteHash && execution.signingInputHash ? 'Digests reported. No explicit content-match result.' : 'No confirmed comparison of checked quote and signing content.'}</span></dd></div>
-        <div><dt>Task budget</dt><dd><strong>Unknown · Budget check not reported</strong><span>The quote is a price, not a task budget or spending authorization.</span></dd></div>
+        <div><dt>Task budget</dt><dd><strong>{preflight?.passed ? 'Unknown · Remaining budget not connected' : 'Unknown · Budget check not reported'}</strong><span>{preflight?.passed ? 'Scope and per-transaction amount matched, but no remaining budget was checked.' : 'The quote is a price, not a task budget or spending authorization.'}</span></dd></div>
         <div><dt>Network applicability</dt><dd><strong>{unknown || !source || source === 'unavailable' ? 'Unknown' : source === 'fixture' ? 'Unknown · Fixture only' : evidence?.coverage === 'mismatch' ? 'Backend reports a mismatch' : evidence?.coverage === 'verified' ? 'Backend reports verified coverage' : 'Unknown · Coverage unverified'}</strong><span>Payment: {terms?.network ?? 'Unknown'} · Evidence: {evidence?.providerEvidenceNetwork ?? 'Unknown'}. Same address does not establish cross-network coverage.</span></dd></div>
       </dl>
       <h2 className="flow-section-title">3 · Execution</h2>
@@ -83,7 +109,7 @@ export function LivePaymentCheck(props: Props) {
       <p className="payment-scope">Request: <code>{requestId || 'Not created'}</code></p>
       {execution && <dl><div><dt>Operation</dt><dd>{identityUnavailable ? 'Not established · No trusted operation identity' : <code>{execution.operationId}</code>}</dd></div><div><dt>Checked quote digest</dt><dd><code>{execution.checkedQuoteHash ?? 'Not reported'}</code></dd></div><div><dt>Signing input digest</dt><dd><code>{execution.signingInputHash ?? 'Not reported'}</code></dd></div></dl>}
       {execution && <p className="payment-scope">Backend completion claim: {unknown ? 'Unknown' : String(execution.taskComplete)} · Not validated delivery.</p>}
-      {result && <details className="response-facts"><summary>Response facts</summary><pre>{JSON.stringify(responseFacts(result), null, 2)}</pre></details>}
+      {result && <details className="response-facts"><summary>Response facts</summary><pre>{JSON.stringify(responseFacts(result, !preflightStale), null, 2)}</pre></details>}
       <div className="archived-views"><button className="text-button" onClick={props.onRequest}>Saved request</button><button className="text-button" onClick={props.onServices}>Report offer</button><button className="text-button" onClick={props.onDetails}>Technical details</button></div>
       {!identityUnavailable && <details className="offline-examples"><summary>Offline examples · No API calls</summary><PaymentCheck result={null} uncertain={false} onRequest={props.onRequest} onServices={props.onServices} onScenario={props.onScenario} onDetails={props.onDetails}/></details>}
     </details>

@@ -1,4 +1,5 @@
 import type { PurchaseResult, ProtectedPaymentOutcome } from '../../../shared/contracts.ts';
+import { isTaskPaymentPreflight } from '../../../shared/task-payment-preflight.ts';
 import type { BuyerHealth } from '../../buyer/src/service.ts';
 import { INTERCEPTA_TRAIT_NAMES } from '../../buyer/src/intercepta-response.ts';
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -41,6 +42,13 @@ export function isPurchase(v: unknown): v is PurchaseResult {
   if (v.execution !== undefined) {
     if (!isExecution(v.execution)) return false;
     if ('identity' in v.execution && (v.decision === 'allow' || v.status === 'paid' || v.data !== undefined || v.transaction !== undefined)) return false;
+  }
+  if (Object.hasOwn(v, 'grantPreflight')) {
+    if (!isTaskPaymentPreflight(v.grantPreflight)) return false;
+    if (v.status !== 'held' || v.decision !== 'hold' || v.paymentEnabled !== false
+      || v.counters.sign !== 0 || v.counters.settle !== 0
+      || ['data', 'transaction', 'execution'].some(key => Object.hasOwn(v, key))) return false;
+    if (v.grantPreflight.passed && (!record(v.terms) || v.grantPreflight.amountAtomic !== v.terms.amount)) return false;
   }
   return true;
 }
