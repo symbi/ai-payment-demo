@@ -1,3 +1,4 @@
+import { describeSavedEvidence, EVIDENCE_GROUPS, TRAIT_RULE_REFERENCE } from './risk-evidence-display.ts';
 import { PolicySandbox } from './PolicySandbox.tsx';
 import { useState } from 'react';
 import type { PrivateRiskPanelProps, PrivateScanRecord, PrivateScanStatus } from '../../../shared/private-risk.ts';
@@ -83,30 +84,48 @@ function usableLiveEvidence(record: PrivateScanRecord | undefined, loading: bool
 
 function Evidence({ record, live, offlineFixture }: { record: PrivateScanRecord | undefined; live: boolean; offlineFixture: boolean }) {
   const scan = record?.risk?.scan;
-  const labels = scan?.traitLabels ?? [];
+  const evidence = describeSavedEvidence(record);
   return <>
     <div className="private-risk-evidence-head">
-      <div><span className="private-risk-label">Toxic Score</span><strong>{scan?.toxicScore ?? 'Missing'}</strong></div>
+      <dl><div><dt>Source</dt><dd>{offlineFixture ? 'SIMULATED' : live ? 'LIVE' : 'Unavailable'}</dd></div></dl>
+    </div>
+    <section className="private-risk-factors" aria-label="Decision Factors">
+      <h3>Decision Factors</h3>
+      <p className="private-risk-factor-summary">{evidence.labels === null ? 'Unknown' : evidence.labels.length} displayed saved label entries · {evidence.uniqueLabels === null ? 'Unknown' : evidence.uniqueLabels.length} distinct recognized types</p>
+      <div className="private-risk-traits" aria-label="Observed risk traits">
+        {EVIDENCE_GROUPS.map(group => {
+          const vocabulary = TRAIT_RULE_REFERENCE.filter(item => item.reason === group.reason);
+          const observed = vocabulary.filter(item => evidence.uniqueLabels?.includes(item.label));
+          return <div className="private-risk-factor-group" key={group.reason}>
+            <h4>{group.title} <small>{vocabulary.length} types</small></h4>
+            <div>{observed.length
+              ? observed.map(item => <span className="private-risk-chip" key={item.label}>{item.label}</span>)
+              : <p className="private-risk-muted">Not observed in saved evidence</p>}</div>
+          </div>;
+        })}
+      </div>
+      <p className="private-risk-factor-caveat">Not observed does not mean absent. These are rule categories; the actual decision also depends on evidence quality and amount.</p>
+      <p className="private-risk-vocabulary">The parser recognizes {TRAIT_RULE_REFERENCE.length} label types. This is vocabulary size, not a checklist of passed checks.</p>
+    </section>
+    <section className="private-risk-quality" aria-label="Evidence Quality">
+      <h3>Evidence Quality</h3>
       <dl>
-        <div><dt>Evidence</dt><dd>{scan?.traitsCount ?? 'Missing'}</dd></div>
-        <div><dt>Source</dt><dd>{offlineFixture ? 'SIMULATED' : live ? 'LIVE' : 'Unavailable'}</dd></div>
+        <div><dt>Availability</dt><dd>{evidence.available ? 'Available saved evidence' : 'Evidence unavailable'}</dd></div>
+        <div><dt>Unknown trait entries</dt><dd>{evidence.unknownCount ?? 'Unknown'}</dd></div>
+        <div><dt>Completeness</dt><dd>{evidence.completeness}</dd></div>
+        <div><dt>Reported trait entries</dt><dd>{evidence.reportedEntries ?? 'Unknown'}</dd></div>
       </dl>
+      <p className="private-risk-factor-caveat">Counts describe saved entries, not unique risk factors. Missing fields stay Unknown; unknown or truncated evidence is not a complete assessment.</p>
+    </section>
+    <div className="private-risk-raw-signal">
+      <p>Raw provider signal — not used as a threshold by this policy</p>
+      <span>Toxic Score <strong>{scan?.toxicScore ?? 'Missing'}</strong></span>
     </div>
-    <div className="private-risk-traits" aria-label="Observed risk traits">
-      <span className="private-risk-label">Traits</span>
-      <div>{labels.length
-        ? labels.map(label => <span className="private-risk-chip" key={label}>{label}</span>)
-        : <span className="private-risk-muted">{scan?.traitsCount === 0 ? 'No labels returned; zero is not a safety grade.' : 'Missing'}</span>}</div>
-    </div>
-    {!live && <p className="private-risk-muted">Evidence unavailable</p>}
   </>;
 }
 
-const hardTraits = new Set(['sanction_address', 'blacklist', 'known_scammer']);
-const moderateTraits = new Set([
-  'mixer_transfers', 'non_kyc_transfers', 'sanction_address_communication',
-  'fake_phishing_transfer', 'fake_phishing_contract_communication', 'rug_pull_trader',
-]);
+const hardTraits: ReadonlySet<string> = new Set(TRAIT_RULE_REFERENCE.filter(item => item.reason === 'hard_deny_trait').map(item => item.label));
+const moderateTraits: ReadonlySet<string> = new Set(TRAIT_RULE_REFERENCE.filter(item => item.reason === 'moderate_trait').map(item => item.label));
 
 function observedTrait(record: PrivateScanRecord | undefined, allowed: ReadonlySet<string>) {
   return record?.risk?.scan?.traitLabels?.find(label => allowed.has(label));
@@ -148,7 +167,7 @@ function decisionCopy(result: LivePaymentPolicyResult, record: PrivateScanRecord
       };
     }
     case 'no_traits': return {
-      why: offlineFixture ? 'The synthetic provider evidence contains no observed traits. Toxic Score remains raw evidence only.' : 'The complete live response contains no observed traits. Toxic Score remains raw evidence only.',
+      why: 'The complete saved evidence has zero reported trait entries, so the project no-traits rule applies. This does not establish absence of risk. The raw score is not a policy threshold.',
       next: 'Eligible under project demo rules; execution remains disconnected.',
     };
     case 'unmapped_trait': return {
@@ -185,6 +204,17 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           : exhausted ? `Attempt allowance used (${status.usedRequests}/${status.maxRequests}).`
             : record ? 'A saved record exists for this address; it is assessed locally without rescanning.' : '';
 
+  const savedAssessment = loading ? 'Loading saved assessment…'
+    : record?.state === 'pending' ? 'Assessment pending'
+      : record?.state === 'unavailable' ? 'Saved assessment unavailable'
+        : liveEvidence ? (offlineFixture ? 'Saved simulated assessment' : 'Saved live assessment')
+          : 'Using saved assessment · Evidence unavailable';
+  const savedAssessmentNote = record?.state === 'pending'
+    ? 'Refresh saved records to check the existing attempt. Do not submit another assessment.'
+    : record?.state === 'unavailable'
+      ? 'The saved attempt did not provide usable evidence. No automatic rescan. Refresh saved records to query its saved status.'
+      : 'Using existing evidence — no rescan. No rescan required. Amount changes re-evaluate saved evidence locally. Refresh saved records does not refresh provider evidence or establish current safety.';
+
   if (!candidate) return <main className="private-risk-panel"><p className="private-risk-message" role="alert">The selected recipient was not found.</p></main>;
   return <main className="private-risk-panel" aria-labelledby="private-risk-title">
     <header className="private-risk-hero">
@@ -207,15 +237,19 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
         <select id="private-risk-candidate" value={selectedId} disabled={loading} onChange={event => onSelect(event.target.value as PrivateRiskPanelProps['selectedId'])}>
           {PRIVATE_RISK_CANDIDATES.map(item => <option key={item.id} value={item.id}>Case {item.id}</option>)}
         </select>
+        <p className="private-risk-note">Selecting a recipient only looks up saved records; it does not run a risk check.</p>
         <code className="private-risk-address">{candidate.address}</code>
         <div className="private-risk-intent-grid">
           <label htmlFor="private-risk-amount">Amount<input id="private-risk-amount" inputMode="decimal" value={amountUsdc} disabled={loading} onChange={event => setAmountUsdc(event.target.value)} /></label>
           <div><span className="private-risk-label">Asset</span><strong>USDC</strong></div>
           <div><span className="private-risk-label">Network</span><strong>Ethereum Mainnet for screening</strong><small>eip155:1 · Coverage: unverified</small></div>
         </div>
-        <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>Assess Payment</button>
+        <p className="private-risk-note">Amount is the intended payment amount. Editing it only recalculates local policy; it does not contact the provider or send a payment.</p>
+        {record
+          ? <div className="private-risk-saved-assessment" role="status"><strong>{savedAssessment}</strong><p className="private-risk-note">{savedAssessmentNote}</p></div>
+          : <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>{offlineFixture ? 'Run Simulated Risk Check' : 'Run Live Risk Check'}</button>}
         <p className="private-risk-note">Screened before any signing or execution.</p>
-        <p className="private-risk-status-copy">{loading ? 'Assessment in progress…' : scanDisabledReason || 'Manual one-address assessment. One attempt; no automatic retry.'}</p>
+        {!record && <p className="private-risk-status-copy">{loading ? 'Assessment in progress…' : scanDisabledReason || 'Manual one-address assessment. One attempt; no automatic retry.'}</p>}
         {message && <p className="private-risk-message" role="status">Address assessment state changed. Review the saved status and technical details.</p>}
       </section>
 
@@ -240,8 +274,10 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           <div><dt>Requested</dt><dd>{amountUsdc || 'Missing'} USDC</dd></div>
           <div><dt>Policy cap</dt><dd>{policy.capUsdc ? `${policy.capUsdc} USDC` : 'Not applicable'}</dd></div>
           <div><dt>Within limit</dt><dd>{policy.amountWithinLimit ? 'Yes' : 'No'}</dd></div>
+          {policy.capUsdc && <div><dt>Amount context</dt><dd>{policy.amountWithinLimit ? 'Within policy cap' : 'Exceeds policy cap — amount unchanged'}</dd></div>}
           <div><dt>Reason code</dt><dd>{policy.reasonCode}</dd></div>
         </dl>
+        <p className="private-risk-factor-caveat">Policy uses traits, evidence quality and the intended amount. Raw provider score is displayed only, not used as a decision threshold.</p>
         <div className="private-risk-why"><span className="private-risk-label">Why</span><p>{copy.why}</p></div>
         <p className="private-risk-policy-boundary">{offlineFixture ? 'Project-defined demo rules use synthetic provider evidence. This is not a live Intercepta response or execution permission.' : 'Project-defined demo rules use Intercepta observations. This is not an Intercepta verdict or execution permission.'}</p>
       </section>
@@ -249,7 +285,7 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
       <section className="private-risk-card private-risk-execution" aria-labelledby="private-risk-execution-title">
         <div className="private-risk-step"><span>04</span><div><p>STEP 04</p><h2 id="private-risk-execution-title">Execution gating</h2></div></div>
         <div className="private-risk-gate">
-          <div><span className="private-risk-label">Execution</span><strong>Execution: NOT CONNECTED</strong></div>
+          <div><span className="private-risk-label">Execution</span><strong>Payment execution — NOT CONNECTED</strong></div>
           <div><span className="private-risk-label">Next action</span><p>{copy.next}</p></div>
         </div>
         <details className="private-risk-details private-risk-audit">

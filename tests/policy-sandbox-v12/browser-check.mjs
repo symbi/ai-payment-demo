@@ -44,15 +44,20 @@ try {
  }
  await page.goto(origin);
  await assertFixturePresentation();
- const heading=page.getByRole('heading',{name:'Policy Sandbox — Synthetic Scenarios',exact:true});
+ const heading=page.getByRole('heading',{name:'Decision Lab · SIMULATED',exact:true});
  await expect(heading).toBeVisible(); const sandbox=heading.locator('xpath=ancestor::section[1]');
- await expect(sandbox).toContainText('SIMULATED');await expect(sandbox).toContainText('Synthetic policy scenario');
+ await expect(sandbox).toContainText('Same score. Different evidence. Different action.');await expect(sandbox).toContainText('SIMULATED');await expect(sandbox).toContainText('Synthetic policy scenario');
  await expect(sandbox).toContainText('Not a live Intercepta response');await expect(sandbox).toContainText('NOT CONNECTED');
  for(const decision of ['ALLOW_WITH_LIMIT','DENY','HOLD']) await expect(sandbox).toContainText(decision);
  assert.equal(await sandbox.locator('input,select,button,a').count(),0);
  assert.equal(await sandbox.locator('.policy-sandbox-grid').evaluate(el=>getComputedStyle(el).display),'grid');
  const desktopBoxes=await sandbox.locator('.policy-sandbox-card').evaluateAll(els=>els.map(el=>({top:el.getBoundingClientRect().top,left:el.getBoundingClientRect().left})));
- assert.equal(desktopBoxes.length,3);assert.equal(desktopBoxes[0].top,desktopBoxes[1].top);assert.equal(desktopBoxes[1].top,desktopBoxes[2].top);assert.ok(desktopBoxes[0].left<desktopBoxes[1].left && desktopBoxes[1].left<desktopBoxes[2].left);
+ assert.equal(desktopBoxes.length,3);
+ const labCards=sandbox.locator('.policy-sandbox-card');
+ for (const [index,id] of ['SIM-001','SIM-002','SIM-003'].entries()) await expect(labCards.nth(index)).toContainText(id);
+ await expect(labCards.nth(0)).toContainText('mixer_transfers');
+ await expect(labCards.nth(1)).toContainText('sanction_address');
+ await expect(labCards.nth(2)).toContainText('Unknown — reported trait is not identified');assert.equal(desktopBoxes[0].top,desktopBoxes[1].top);assert.equal(desktopBoxes[1].top,desktopBoxes[2].top);assert.ok(desktopBoxes[0].left<desktopBoxes[1].left && desktopBoxes[1].left<desktopBoxes[2].left);
  const text=await sandbox.innerText();assert.ok(!/0x[0-9a-f]{40}/i.test(text));assert.ok(!/HTTP\s*200|source\s*:\s*live/i.test(text));
  assert.equal(POLICY_SCENARIOS.length,3);
  assert.deepEqual(POLICY_SCENARIOS.map(s=>evaluateSyntheticPaymentPolicy(s.input,s.amountUsdc).decision),['ALLOW_WITH_LIMIT','DENY','HOLD']);
@@ -66,7 +71,7 @@ try {
  const downloadEvent=page.waitForEvent('download');await audit.getByRole('button',{name:'Download project decision snapshot',exact:true}).click();
  const download=await downloadEvent,bytes=await readFile(await download.path(),'utf8'),receipt=JSON.parse(bytes);
  assert.equal(receipt.intent.candidateId,'H1');assert.equal(receipt.intent.amountUsdc,'0.002');assert.equal(receipt.policy.decision,'ALLOW');
- assert.ok(!/synthetic-mixer-50|synthetic-sanction-50|synthetic-unknown-50|SIMULATED/.test(bytes));
+ assert.ok(!/synthetic-mixer-50|synthetic-sanction-50|synthetic-unknown-50|SIM-00[123]|SIMULATED/.test(bytes));
  await page.screenshot({path:new URL('desktop.png',output).pathname,fullPage:true});
  await sandbox.screenshot({path:new URL('sandbox-desktop.png',output).pathname});
  await page.setViewportSize({width:390,height:844});await expect(heading).toBeVisible();
