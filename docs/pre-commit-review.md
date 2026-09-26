@@ -39,3 +39,13 @@ Fast owner delta review; base `7877fe4903f727fe5e443b0b0c24b92c42c6c1b5`, no rem
 Final delta result: passed for local checkpoint; final user acceptance and complete payment/Agent integration remain separate.
 
 Freeze evidence: B explicitly stopped source/document writes. QA's last turn is completed and its task is idle; no explicit textual freeze receipt was received. The coordinator removed that redundant textual gate. Target file hashes are checked before and after staging; this evidence is not represented as a QA acknowledgement.
+
+## ETH25 single-screen delta checkpoint — 2026-09-26
+
+Fast owner packaging review, base `40e822636f32185e97c8ff21ad6a86df56c544ee`. Scope: payment-check display/model/style/tests, its browser check, main entry and three existing navigation check scripts, B log, independent QA report, and root delivery instructions/review. Backend, shared contracts and dependencies are unchanged.
+
+Standards result: passed. Web22 matches manifest `1be2dce241dd301658b079583a8457dc0a0826bc264fa32d4def5edb4834da09`; original independent review and QA apply to those exact bytes. Owner reviewed display-only behavior and current-versus-synthetic evidence distinction; no new P0/P1 findings. Reused author 8 model tests/13 interactions/typecheck/build and reviewer 8 tests/typecheck without repeating old suites or real calls.
+
+Specification result: passed only for offline single-screen presentation. Synthetic Continue never authorizes payment; current responses remain Block/Pause and unknown settlement remains unconfirmed. `qa-intercepta-check.md` documents direct browser evidence separately from source-based no-scan reasoning. README and second-computer instructions now explain the default offline screen and Details → Report offer route. Not a successful live payment, malicious-object proof, application Agent or challenge acceptance.
+
+Final result: passed for local checkpoint; remote upload and final user acceptance remain separate.

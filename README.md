@@ -4,6 +4,8 @@ Work in progress: a buyer-side pre-signing safety gate for an x402 **Contract In
 
 ## What you can demonstrate today
 
+The default **Intercepta payment check** screen is an explicitly labelled offline illustration. Its Check risk button does not call the API or pay: synthetic presets display Block / Pause / Continue, and Continue is not a real authorization. Existing request only displays a previously loaded response. For the existing live non-payment flow below, open **Details → Report offer**; the separate Scenario is an archived fictional example.
+
 1. Open the English purchase page and inspect the bundled contract sample.
 2. Get a real HTTP 402 quote from the local seller for **0.001 test USDC**.
 3. Explicitly request an Intercepta address check using your locally configured key.

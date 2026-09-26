@@ -26,6 +26,8 @@ To enable only the address scan, edit the local `.env` and set `INTERCEPTA_API_K
 
 ## Expected demonstration
 
+The default single-screen check is **Offline example · Synthetic evidence**. Its Check risk button changes display state only, without a new scan or payment. Continue is a synthetic illustration, not permission to sign. Use **Details → Report offer** to reach the real non-payment flow described below; Existing request stays empty until a request has been loaded in this session.
+
 1. Open Contract Insights: the bundled sample's structure is visible, not an arbitrary smart-contract audit.
 2. Request a quote: the seller returns HTTP 402 and the page shows 0.001 test USDC.
 3. Explicitly click the risk-check control: this may consume an API request; it is not triggered by installing or simply opening the page.

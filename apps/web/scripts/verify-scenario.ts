@@ -9,6 +9,12 @@ try {
   await vite.listen(); const origin = `http://127.0.0.1:${(vite.httpServer!.address() as AddressInfo).port}`;
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  // The archived service starts behind the new payment-check entry.
+  const openOffer = async () => {
+    await page.locator('.payment-details>summary').click();
+    await page.getByRole('button', { name: 'Report offer', exact: true }).click();
+    await page.locator('nav details>summary').click();
+  };
   const calls: string[] = [], errors: string[] = []; let requestId = '';
   page.on('pageerror', e => errors.push(e.message));
   await page.route('**/*', async route => {
@@ -19,7 +25,7 @@ try {
     if (url.pathname === '/api/inspect') { requestId = route.request().postDataJSON().requestId; return route.fulfill({ json: { requestId, status: 'held', decision: 'hold', reasons: ['Offline fixture'], counters: { sign: 0, settle: 0 }, events: [], paymentEnabled: false, aiMode: 'not_configured' } }); }
     throw new Error(`Unexpected API ${url.pathname}`);
   });
-  await page.goto(origin);
+  await page.goto(origin); await openOffer();
   await page.getByRole('button', { name: 'Get quote' }).click();
   await expect(page.getByRole('heading', { name: 'Contract Report', exact: true })).toBeVisible();
   const nav = page.getByRole('navigation');

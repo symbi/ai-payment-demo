@@ -9,6 +9,12 @@ try {
   await vite.listen(); const origin = `http://127.0.0.1:${(vite.httpServer!.address() as AddressInfo).port}`;
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage(); const errors: string[] = []; const requests: string[] = [];
+  // The archived service starts behind the new payment-check entry.
+  const openOffer = async () => {
+    await page.locator('.payment-details>summary').click();
+    await page.getByRole('button', { name: 'Report offer', exact: true }).click();
+    await page.locator('nav details>summary').click();
+  };
   page.on('pageerror', e => errors.push(e.message));
   await page.route('**/*', async route => {
     const u = new URL(route.request().url()); if (u.origin !== origin) return route.abort();
@@ -17,7 +23,7 @@ try {
     return route.fulfill({ json: { resourcePath: '/api/contract-insights', buyer: { connected: true }, seller: { connected: true, ready: false, message: 'Fixture' }, configuration: { payToConfigured: true, interceptaKeyConfigured: false }, paymentEnabled: false } });
   });
   for (const width of [1440, 390, 320]) {
-    await page.setViewportSize({ width, height: 1000 }); await page.goto(origin);
+    await page.setViewportSize({ width, height: 1000 }); await page.goto(origin); await openOffer();
     await expect(page.getByRole('heading', { name: 'Contract Report', exact: true })).toBeVisible();
     await expect(page.getByRole('img')).toHaveCount(0);
     await page.screenshot({ path: `/private/tmp/contract-report-offer-${width}.png`, fullPage: true });
@@ -43,7 +49,7 @@ try {
   assert.equal(await page.getByRole('dialog').evaluate(e => e.scrollWidth <= e.clientWidth), true);
   await page.screenshot({ path: '/private/tmp/contract-midnight-details-320.png', fullPage: true });
   await page.keyboard.press('Escape');
-  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.reload();
+  await page.emulateMedia({ reducedMotion: 'reduce' }); await page.reload(); await openOffer();
   await page.getByRole('button', { name: 'Preview report', exact: true }).click();
   assert.equal(await page.locator('.metric-bar').first().evaluate(e => getComputedStyle(e).animationName), 'none');
   await page.getByText('Source & method', { exact: false }).focus();

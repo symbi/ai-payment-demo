@@ -17,6 +17,12 @@ try {
   const origin = `http://127.0.0.1:${(vite.httpServer!.address() as AddressInfo).port}`;
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+  // The archived service starts behind the new payment-check entry.
+  const openOffer = async () => {
+    await page.locator('.payment-details>summary').click();
+    await page.getByRole('button', { name: 'Report offer', exact: true }).click();
+    await page.locator('nav details>summary').click();
+  };
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   let inspectCalls = 0, payCalls = 0;
   let saved: PurchaseResult | undefined;
@@ -57,7 +63,7 @@ try {
   const noOverflow = async () => assert.equal(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth), true);
   const details = async () => { await page.getByRole('button', { name: 'Details ↗', exact: true }).click(); await expect(page.getByRole('dialog')).toBeVisible(); };
   const quote = async () => { await page.getByRole('button', { name: 'Get quote' }).click(); await expect(page.locator('.quote-price')).toBeVisible(); };
-  await page.goto(origin);
+  await page.goto(origin); await openOffer();
   await expect(page.getByRole('heading', { name: 'Contract Report', exact: true })).toBeVisible();
   await expect(page.getByRole('img')).toHaveCount(0);
   assert.equal(await page.locator('body').innerText().then(s => /东京|天气|Tokyo|weather/.test(s)), false);
@@ -94,7 +100,7 @@ try {
   offline = false; await nav.getByRole('button', { name: /Request/ }).click(); await page.getByRole('button', { name: 'Query request' }).click();
   await expect(page.getByRole('heading', { name: 'Scan received', exact: true })).toBeVisible(); assert.equal(payCalls, 1);
   for (mode of ['changed', 'lost-changed', 'lost-normal', 'badscan']) {
-    await page.reload(); await quote(); await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeEnabled();
+    await page.reload(); await openOffer(); await quote(); await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeEnabled();
     const before: number = payCalls; await page.getByRole('button', { name: 'Check', exact: true }).click();
     await expect(page.getByRole('button', { name: mode === 'changed' ? 'Checked' : 'Check attempted', exact: true })).toBeDisabled();
     if (mode !== 'changed') await expect(page.getByRole('heading', { name: 'Status unknown', exact: true })).toBeVisible();
@@ -105,14 +111,14 @@ try {
     if (mode.includes('changed')) { await details(); await expect(page.getByText('Quote changed.', { exact: true })).toBeVisible(); await page.keyboard.press('Escape'); }
   }
   for (mode of ['seller', 'malformed', 'coerced', 'unknown', 'denied']) {
-    await page.setViewportSize({ width: 320, height: 844 }); await page.reload(); await quote();
+    await page.setViewportSize({ width: 320, height: 844 }); await page.reload(); await openOffer(); await quote();
     await expect(page.getByRole('button', { name: 'Check', exact: true })).toBeDisabled(); await expect(page.getByRole('button', { name: 'Buy', exact: true })).toBeDisabled();
     await expect(page.getByRole('heading', { name: mode === 'seller' ? 'Review required' : mode === 'denied' ? 'Declined' : 'Status unknown', exact: true })).toBeVisible();
     await noOverflow();
     if (mode === 'denied') { await details(); assert.equal(await page.getByRole('dialog').evaluate(e => e.scrollWidth <= e.clientWidth), true); await page.keyboard.press('Escape'); }
     if (['unknown', 'malformed', 'coerced'].includes(mode)) { await nav.getByRole('button', { name: 'Services', exact: true }).click(); await expect(page.getByRole('button', { name: 'Get quote' })).toBeDisabled(); }
   }
-  oldService = true; await page.reload(); await expect(page.getByText('Service updating', { exact: true })).toBeVisible(); await expect(page.getByRole('button', { name: 'Get quote' })).toBeDisabled();
+  oldService = true; await page.reload(); await openOffer(); await expect(page.getByText('Service updating', { exact: true })).toBeVisible(); await expect(page.getByRole('button', { name: 'Get quote' })).toBeDisabled();
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ result: 'PASS', evidence: 'isolated fixtures only; no live backend/provider', checks: ['public JSON equality and source SHA', 'actual 4/2/1 chart', 'English service identity', 'preview no request', 'keyboard modal focus', '390/320 no overflow', 'quote/check double click lock', 'raw score never safety', 'buy disabled', 'unknown blocks new quote', 'query keeps identity', 'lost check never retries or claims completion', 'changed quote reasons preserved', 'malformed scan facts held', 'seller missing quote', 'malformed/coerced/unknown states', 'large amount', 'old resource blocked', 'no runtime errors'], inspectCalls, payCalls }, null, 2));
 } finally { await browser?.close(); await vite.close(); }

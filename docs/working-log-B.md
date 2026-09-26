@@ -293,3 +293,45 @@ c6aba0302172e9fba40c582f5b04d5a0da43db5949d9fea5e9e91960828ce357  apps/web/vite.
 ```
 
 02 received docs/qa-scenario-demo.md: QA PASS, no blockers; web17 manifest24e82625313662dd76045568b02168bf586f1a3de8166ee19d4eeecf758f013f matched17/17 before and after. Actual default flow, free solid option with zero budget, review reset after changes, duotone/SVG mismatch,390px and empty console passed. QA no-API conclusion is based on source review; author browser network assertions are separate evidence. No real AI, seller integration, verified license or payment claimed. ETH43 risk-analysis chart remains a separate unfinished item. B only records this receipt; no source edits or reruns. All B source and document writes are now paused for M local delta commit; sole Scenario author session01a0d923-90e3-7801-a43e-c4b00c829de6.
+
+## ETH25 Intercepta single-screen payment check - 2026-09-26
+
+M checkpoint40e822636f32185e97c8ff21ad6a86df56c544ee verified clean before resuming, and M/02 explicitly released this web-only slice. User direction narrowed from generic Adapter/three steps to Intercepta challenge: one fixed seller/order, one Check risk action, decision plus reason/signature/payment. No numbered cards or primary multi-seller navigation. Applied ui-ux-pro-max guidance (read skill/pro-rules, local design search and React guidance); retained established midnight palette/system fonts without adopting irrelevant sales badges/fonts/GSAP/dependencies.
+
+Implemented PaymentCheck.tsx, payment-check.ts/css and model/browser checks; main default view is Intercepta. Main screen has order/item/amount/short recipient, persistent offline-vs-current provenance, Check risk, one decision/reason, short signature/payment status. Old report/Scenario/request/technical fields are behind one Details entry. Default source is explicit Offline example, initiallyNot checked; button performs local state update only. Switching examples resets checked state. Continue is explicitly Decision only / No payment and has no simulated toxicScore/traits or real authorization. Existing-request view consumes only existing App result; quote recipient and scan object remain separate, raw0 is uninterpreted, unverified provider semantics alwaysPause, previousdeny becomesPause when stateunknown, and signature/payment areUnconfirmed. No current record disables the button; no fabricated live data. No applicationLLM and no new scan/payment stated visibly. View cannot authorize/sign/pay or trigger real API calls. Existing request action logic/backend/shared/seller untouched relative40e822; actual execution remains02-only.
+
+ETH25v34 in_progress restored with current authorized scope and history preserved. ETH32 is existing backend dependency only; ETH43 risk-analysis chart remains undone; ETH46 archived local scene preserved, not expanded. Three older browser scripts mechanically updated to navigate through new secondary entry, not rerun or claimed as new evidence.
+
+Author8 model tests/typecheck/build PASS. Final13-group isolatedChrome PASS: single order/action/no primary nav, provenance persists, switches reset,3 offline outcomes, display clicks/switcheszeroAPI, emptycurrentdisabled, actualquote/score0Pause, unknownPause/Unconfirmed, oldrequestpreserved,1440/390/320fit, no pay/provider calls, long denied valueswrap, no runtime errors. Test APIs fixture-only; no shared restart/realprovider/secret read. Initial test locator conflicts with duplicate hidden-details text fixed by scoping; a test-onlydenyfixture incorrectly retained live scan, corrected to policydeny without risk. Reviewer flagged longamount layout candidate; B reproduced actual overflow with78digitamount. Fixed onlyCSS min-width/max-width/overflow-wrap for amount and recipient, then added128char non0x recipient and both390/320 html/card regressions, finalPASS. No170/backend/fullhistorical suite rerun.
+
+Original reviewer independently8modeltests/typecheck and action-scope verificationPASS; final P2/hash receipt pending. Source frozenweb22 manifest/private/tmp/intercepta-check-web-manifest.txt digest1be2dce241dd301658b079583a8457dc0a0826bc264fa32d4def5edb4834da09, supersedes6b708 preliminary. Screenshots/private/tmp/intercepta-simple-1440.png, intercepta-simple-390.png, intercepta-simple-320.png show explicitlyofflineContinue; B inspected390. Ready for original review final delta then02/independentQA, not userdone or actualAI/riskauthorization/payment completion.
+
+ETH25 single-screen final independent Review PASS, actual gpt-6-astra/xhigh. One P2 narrow-screen overflow reproduced and closed; no remaining high-confidence P0/P1/P2. Reviewer independently8/8modeltests and finaltypecheck, reviewed CSS/regressions/screenshots. Author13isolatedbrowser/build evidence separately attributed; reviewerChrome probe did not complete due sandbox launch limits. Final web22 manifest1be2dce241dd301658b079583a8457dc0a0826bc264fa32d4def5edb4834da09 matched and stable. Buyer/seller/shared unchanged versus40e8226. Ready for02/QA only, not actual scan/payment authorization or user acceptance.
+
+Final Intercepta web22 manifest:
+```text
+3ac94023e32025b93140f6267427b3c38fa9cda50059f773d10bb1bb06bde865  apps/web/index.html
+9c906c8fba27a525e8317cb70153b78ea5bd6408b2cc4a43fb95ae4a5f6cfad5  apps/web/scripts/verify-chart.ts
+38f9a201af04ed157e400409f69f91cea5a5e86852dabaf9741c0e1e1ed81afe  apps/web/scripts/verify-payment-check.ts
+5f242c22918d25bc9c8d7e02dd0a4e419beed8baf23d35f05e508bb7f35b689f  apps/web/scripts/verify-scenario.ts
+3ac29948e02c348978922ebfa790a7338f69de623e903325de668f0da14a11f2  apps/web/scripts/verify-ui.ts
+f581eb5e19b29bc75960b5be4e0d734b3fa776e2a607fed8191e6b90279ed8cf  apps/web/src/PaymentCheck.tsx
+079f697e92d8797ac680cb108cb2410b1fef5f173cd92824c97110e65ddcd8c3  apps/web/src/SamplePreview.tsx
+7beffb500e4a2e2de5c8f2347f73ae43d84ca385d33be9db687b5ebc3833edb4  apps/web/src/ScenarioDemo.tsx
+98578e0afe7f43395b650c0f76cbadbefaec19bb834127e84751c1153de50368  apps/web/src/api.test.ts
+5fa2f5351eebb4ddff4194187be5f9e6c786037b61a6329511fa667f2a06be15  apps/web/src/api.ts
+65996936fbb042915f7b74a200fcdde7e410f32a669b1ab9597cfaa4b0faddb5  apps/web/src/env.d.ts
+f3e74d953d93e8525e68fc231501b9bea82761be125b8b914272a488a1ac83d7  apps/web/src/main.tsx
+69631f39598c9cf84ff5f019f2ff8c37e0f9b91368ad5e4e1aa94697c6eb3f31  apps/web/src/payment-check.css
+d30211b847bf7fe787ba9c73d11bdb4c73e925beaf32c357266d4cc2ebfd8eb5  apps/web/src/payment-check.test.ts
+abe76dcd7de70a41367e0d38b9a4b5f80c85fb67b1b1dcbec048c3ff09bef502  apps/web/src/payment-check.ts
+0089d1a65ac3df480f7ec68e5e43b8f1efe3f11a9161aa62e440f64cc2307ec8  apps/web/src/public-sample.json
+18bdc24baa660aab0f87a7c75d32aef0611160a1554bfa0ae6501ddddaf47fe9  apps/web/src/sample-report.ts
+0181464af8b9cd72904c2b13d8038c2b26ce53486ec3804c5d8394288fef8c14  apps/web/src/scenario-demo.css
+919401de2e4cd465b1e5aaf55a8646c04e1a3ca714bc33c567a0cbb8e1823df6  apps/web/src/scenario-demo.test.ts
+2def7687497f853db331129539c5163bae1c7586fad8ab7e94f92c9be8360af0  apps/web/src/scenario-demo.ts
+426a7f649cead4cc3008727a3bdc1613d8fdce027c51ab6b16539175f3b78cf9  apps/web/src/style.css
+c6aba0302172e9fba40c582f5b04d5a0da43db5949d9fea5e9e91960828ce357  apps/web/vite.config.ts
+```
+
+02 read docs/qa-intercepta-check.md: offline usability QA PASS;02 independently confirmed final web22 22/22 matches1be2dce241dd301658b079583a8457dc0a0826bc264fa32d4def5edb4834da09. QA has stopped all file writes. Limitations: QA did not capture network traffic; real zero-score/unknown branches rely on existing source/model and isolated author-test evidence, not a new live provider request. No actual risk authorization/payment claimed. User confusion about example continue/unavailable is a follow-up copy item, not patched into this frozen candidate. ETH25 remains technical in_review, notdone. B updates only this receipt and then pauses all source/document writes for M/02.
