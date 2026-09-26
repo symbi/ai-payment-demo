@@ -11,6 +11,16 @@ export const PRIVATE_RISK_CANDIDATES = [
   { id: 'L1', address: '0x05ff6964D21e5dAE3b1010D5AE0465b3c450F381', context: '机构标签候选 A（不代表安全）' },
   { id: 'L2', address: '0xf30ba13e4b04Ce5dC4D254Ae5FA95477800F0EB0', context: '机构标签候选 B（不代表安全）' },
   { id: 'L3', address: '0xaA8ba7D4611437141192e7ceCed531Bc0A133efb', context: '机构标签候选 C（不代表安全）' },
+  { id: 'P1', address: '0xFda1Ec4A6178d4916b001a065422D31EBE5F62FF', context: '优先验证候选 1（OFAC 2026-03-12；live 结果未知）' },
+  { id: 'P2', address: '0xcB74874f1e06Fcf80A306e06e5379A44B488bA2D', context: '优先验证候选 2（OFAC 2026-03-12；live 结果未知）' },
+  { id: 'P3', address: '0x9Be599d7867f5E1a2D7Ec6dB9710dF2b98A15573', context: '优先验证候选 3（OFAC 2026-03-12；live 结果未知）' },
+  { id: 'P4', address: '0x76EA76CA4Eb727f18956aB93445a94c5280412B9', context: '优先验证候选 4（OFAC 2026-03-12；live 结果未知）' },
+  { id: 'P5', address: '0x0330070FD38Ec3bB94F58FA55D40368271E9e54A', context: '优先验证候选 5（OFAC 2026-03-12；live 结果未知）' },
+  { id: 'P6', address: '0xFb3eFf152ea55D1BfA04Dbdd509A80fD7b72cdEB', context: '优先验证候选 6（OFAC 2026-03-12；live 结果未知）' },
+  { id: 'P7', address: '0x8d79c73daae8630c88de372ba8f57592fa987607', context: '优先验证候选 7（OFAC 2026-08-07；live 结果未知）' },
+  { id: 'P8', address: '0xbb69e01921b17cd22080968bcc96ba6115da6062', context: '优先验证候选 8（OFAC 2026-08-07；live 结果未知）' },
+  { id: 'P9', address: '0xe05f529f5284d75624eba386cb716928c3b54a2a', context: '优先验证候选 9（OFAC 2026-08-07；live 结果未知）' },
+  { id: 'P10', address: '0x6b69e2a7545c166417a80c61a77562052bffa9c5', context: '优先验证候选 10（OFAC 2026-08-07；live 结果未知）' },
 ] as const;
 export type PrivateCandidateId = typeof PRIVATE_RISK_CANDIDATES[number]['id'];
 export const PRIVATE_SCAN_REVISION = 'private-risk-scan-v1' as const;
