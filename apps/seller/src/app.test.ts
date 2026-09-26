@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Server } from 'node:http';
+import { request, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { FacilitatorClient } from '@x402/core/server';
 import { decodePaymentRequiredHeader, decodePaymentResponseHeader, encodePaymentSignatureHeader } from '@x402/core/http';
@@ -180,5 +180,64 @@ describe('Contract Insights gated report', () => {
       expect(report.declarations.functions).toHaveLength(4);
       expect(report.source.sha256).toBe((await (await fetch(base + path + '/sample')).json()).source.sha256);
     } else { expect(response.status).toBeGreaterThanOrEqual(400); expect(text).not.toContain('declarations'); }
+  });
+});
+
+
+describe('deferred settlement never releases paid report early', () => {
+  it.each(['success', 'rejected', 'exception'] as const)('buffers the HTTP response until settle %s', async outcome => {
+    const path = '/api/contract-insights';
+    const facilitator = fakeFacilitator();
+    type Settlement = Awaited<ReturnType<FacilitatorClient['settle']>>;
+    let resolveSettlement!: (value: Settlement) => void;
+    let rejectSettlement!: (reason: Error) => void;
+    const pendingSettlement = new Promise<Settlement>((resolve, reject) => {
+      resolveSettlement = resolve; rejectSettlement = reject;
+    });
+    facilitator.settle.mockImplementation(() => pendingSettlement);
+    const base = await serve({ payTo, facilitator });
+    const signature = await paymentHeader(base, path);
+    let headersReceived = false;
+    const chunks: Buffer[] = [];
+    let client!: ReturnType<typeof request>;
+    const completed = new Promise<{ status: number; body: string }>((resolve, reject) => {
+      client = request(base + path, { headers: { 'payment-signature': signature } }, response => {
+        headersReceived = true;
+        response.on('data', chunk => chunks.push(Buffer.from(chunk)));
+        response.on('error', reject);
+        response.on('end', () => resolve({ status: response.statusCode!, body: Buffer.concat(chunks).toString('utf8') }));
+      });
+      client.on('error', reject);
+      client.setTimeout(2000, () => client.destroy(new Error('Local response timed out')));
+      client.end();
+    });
+    // Observe failure promptly without an unhandled rejection during cleanup.
+    void completed.catch(() => {});
+    try {
+      await vi.waitFor(() => expect(facilitator.settle).toHaveBeenCalledOnce(), { timeout: 1000, interval: 5 });
+      expect(facilitator.verify).toHaveBeenCalledOnce();
+      // Give queued socket writes time to reach the client while settlement stays unresolved.
+      await new Promise(resolve => setTimeout(resolve, 50));
+      expect(headersReceived).toBe(false);
+      expect(Buffer.concat(chunks).byteLength).toBe(0);
+      if (outcome === 'exception') rejectSettlement(new Error('Synthetic settlement transport failure'));
+      else resolveSettlement({ success: outcome === 'success', transaction: outcome === 'success' ? '0x' + 'a'.repeat(64) : '',
+        network: TEST_NETWORK, ...(outcome === 'rejected' ? { errorReason: 'rejected' } : {}) });
+      const result = await completed;
+      if (outcome === 'success') {
+        expect(result.status).toBe(200);
+        expect(JSON.parse(result.body)).toMatchObject({ kind: 'paid-structure-report' });
+        expect(JSON.parse(result.body).declarations.functions).toHaveLength(4);
+      } else {
+        expect(result.status).toBeGreaterThanOrEqual(400);
+        expect(result.body).not.toContain('declarations');
+        expect(result.body).not.toContain('paid-structure-report');
+        expect(result.body).not.toContain('transferOwnership');
+      }
+    } finally {
+      resolveSettlement({ success: false, errorReason: 'test_cleanup', transaction: '', network: TEST_NETWORK });
+      client.destroy();
+      await completed.catch(() => {});
+    }
   });
 });
