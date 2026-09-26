@@ -56,3 +56,35 @@ it('renders pending as unconfirmed and does not claim that it was never requeste
   const html = renderLivePanel(createElement(PrivateRiskPanel, props(baseStatus({ usedRequests: 1, records: [{ candidateId: 'H1', state: 'pending', attemptedAt: '2026-09-27T01:00:00.000Z', risk: null }] }))));
   expect(html).toContain('A scan is pending'); expect(html).toContain('HOLD'); expect(html).toContain('Execution: NOT CONNECTED');
 });
+
+it.each([
+  { labels: [] as string[], decision: 'ALLOW' },
+  { labels: ['mixer_transfers'], decision: 'ALLOW WITH LIMIT' },
+  { labels: ['sanction_address'], decision: 'DENY' },
+])('labels fixture evidence explicitly without changing $decision or its input', ({ labels, decision }) => {
+  const record = completed('H1', labels.length ? 50 : 0);
+  Object.assign(record.risk.scan, { httpStatus: 200, unknownTraitsCount: 0, traitsCount: labels.length, traitLabels: labels });
+  const status = baseStatus({ usedRequests: 1, records: [record] });
+  const before = JSON.stringify(status);
+  const normal = renderLivePanel(createElement(PrivateRiskPanel, props(status)));
+  const fixture = renderLivePanel(createElement(PrivateRiskPanel, { ...props(status), offlineFixture: true }));
+  expect(normal).toContain('Intercepta Live'); expect(normal).toContain('>LIVE<');
+  expect(normal).not.toContain('Synthetic provider evidence'); expect(normal).not.toContain('SIMULATED');
+  expect(fixture).toContain('Synthetic provider evidence'); expect(fixture).toContain('Not a live Intercepta response');
+  expect(fixture).toContain('>SIMULATED<'); expect(fixture).not.toContain('>LIVE<');
+  expect(fixture).not.toContain('is-live'); expect(fixture).not.toContain('Intercepta reported');
+  expect(fixture).not.toContain('complete live response');
+  for (const html of [normal, fixture]) expect(html).toContain(`>${decision}<`);
+  const facts = (html: string) => html.match(/<dl class="private-risk-policy-facts">.*?<\/dl>/)?.[0];
+  expect(facts(fixture)).toEqual(facts(normal));
+  expect(JSON.stringify(status)).toBe(before);
+});
+
+it('keeps fixture provenance explicit through loading and missing evidence', () => {
+  for (const status of [null, baseStatus()]) {
+    const html = renderLivePanel(createElement(PrivateRiskPanel, { ...props(status), loading: true, offlineFixture: true }));
+    expect(html).toContain('Synthetic provider evidence'); expect(html).toContain('Not a live Intercepta response');
+    expect(html).toContain('>SIMULATED<'); expect(html).not.toContain('Intercepta Live');
+    expect(html).toContain('HOLD');
+  }
+});

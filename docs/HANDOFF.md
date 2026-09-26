@@ -140,3 +140,9 @@ The live scanner, key handling, saved-record schema and journal persistence rema
 Existing spending grants can be saved and displayed, but this is not a connected, unified budget enforcement and payment path. Actual wallet signing, payment and settlement remain **Execution NOT CONNECTED**. No synthetic outcome demonstrates real execution or complete competition eligibility.
 
 After the demo: optional numeric trait preservation, additional provider adapters and executor integration remain separate future work. Numeric producer/consumer work is preserved outside this release; missing historic risk/transaction-count values cannot be backfilled from labels or scores. No new provider/executor placeholder or dependency is part of this core extraction.
+
+## Offline fixture provenance display
+
+The three offline browser harnesses (policy-v8, decision-receipt-v9, policy-sandbox-v12) explicitly set `data-evidence-presentation="offline-fixture"` on their intercepted HTML root before React mounts. This passes a presentation-only prop through PrivateRiskDemo to PrivateRiskPanel. The evidence card, Source field, hero badge and policy explanation identify synthetic evidence; candidate changes, amount edits and reloads retain that mode. This is not a post-render text replacement. Ordinary built HTML has no opt-in attribute and retains the existing live display.
+
+Live-shaped fixture records remain internal test inputs for existing policy and export coverage. They are not real H2 scans, never imported into a journal, and their downloads are test artifacts. The policy engine, scanner, journal, quota and export schemas are unchanged. Old screenshots showing fixture LIVE labels are superseded by the updated harness outputs.

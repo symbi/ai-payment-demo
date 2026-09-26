@@ -81,7 +81,7 @@ function usableLiveEvidence(record: PrivateScanRecord | undefined, loading: bool
     Object.hasOwn(scan, 'unknownTraitsCount');
 }
 
-function Evidence({ record, live }: { record: PrivateScanRecord | undefined; live: boolean }) {
+function Evidence({ record, live, offlineFixture }: { record: PrivateScanRecord | undefined; live: boolean; offlineFixture: boolean }) {
   const scan = record?.risk?.scan;
   const labels = scan?.traitLabels ?? [];
   return <>
@@ -89,7 +89,7 @@ function Evidence({ record, live }: { record: PrivateScanRecord | undefined; liv
       <div><span className="private-risk-label">Toxic Score</span><strong>{scan?.toxicScore ?? 'Missing'}</strong></div>
       <dl>
         <div><dt>Evidence</dt><dd>{scan?.traitsCount ?? 'Missing'}</dd></div>
-        <div><dt>Source</dt><dd>{live ? 'LIVE' : 'Unavailable'}</dd></div>
+        <div><dt>Source</dt><dd>{offlineFixture ? 'SIMULATED' : live ? 'LIVE' : 'Unavailable'}</dd></div>
       </dl>
     </div>
     <div className="private-risk-traits" aria-label="Observed risk traits">
@@ -112,14 +112,15 @@ function observedTrait(record: PrivateScanRecord | undefined, allowed: ReadonlyS
   return record?.risk?.scan?.traitLabels?.find(label => allowed.has(label));
 }
 
-function decisionCopy(result: LivePaymentPolicyResult, record: PrivateScanRecord | undefined) {
+function decisionCopy(result: LivePaymentPolicyResult, record: PrivateScanRecord | undefined, offlineFixture: boolean) {
+  const reporter = offlineFixture ? 'Synthetic provider evidence contains' : 'Intercepta reported';
   switch (result.reasonCode) {
     case 'invalid_amount': return {
       why: 'Enter a positive USDC amount with no more than six decimal places.',
       next: 'Correct the payment intent before requesting evidence.',
     };
     case 'evidence_unavailable': return {
-      why: 'Usable live risk evidence is not available for this payment intent.',
+      why: offlineFixture ? 'Usable synthetic provider evidence is not available for this payment intent.' : 'Usable live risk evidence is not available for this payment intent.',
       next: 'Await evidence or keep the payment paused before signing.',
     };
     case 'unknown_traits': return {
@@ -129,7 +130,7 @@ function decisionCopy(result: LivePaymentPolicyResult, record: PrivateScanRecord
     case 'hard_deny_trait': {
       const trait = observedTrait(record, hardTraits) ?? 'a hard-deny trait';
       return {
-        why: `Intercepta reported ${trait}. The project policy applies its deny rule.`,
+        why: `${reporter} ${trait}. The project policy applies its deny rule.`,
         next: 'Payment is blocked before signing.',
       };
     }
@@ -140,14 +141,14 @@ function decisionCopy(result: LivePaymentPolicyResult, record: PrivateScanRecord
     case 'moderate_trait': {
       const trait = observedTrait(record, moderateTraits) ?? 'restricted evidence';
       return {
-        why: `Intercepta reported ${trait}. The project policy caps demo exposure at 0.001 USDC.`,
+        why: `${reporter} ${trait}. The project policy caps demo exposure at 0.001 USDC.`,
         next: result.amountWithinLimit
           ? 'The intent is within the 0.001 USDC demo cap; execution remains disconnected.'
           : 'Reduce the amount to 0.001 USDC or do not proceed at the current amount.',
       };
     }
     case 'no_traits': return {
-      why: 'The complete live response contains no observed traits. Toxic Score remains raw evidence only.',
+      why: offlineFixture ? 'The synthetic provider evidence contains no observed traits. Toxic Score remains raw evidence only.' : 'The complete live response contains no observed traits. Toxic Score remains raw evidence only.',
       next: 'Eligible under project demo rules; execution remains disconnected.',
     };
     case 'unmapped_trait': return {
@@ -165,13 +166,13 @@ function displayDecision(decision: LivePaymentPolicyResult['decision']) {
   return decision === 'ALLOW_WITH_LIMIT' ? 'ALLOW WITH LIMIT' : decision;
 }
 
-export function PrivateRiskPanel({ selectedId, status, loading, message, onSelect, onScan, onRefresh }: PrivateRiskPanelProps) {
+export function PrivateRiskPanel({ selectedId, status, loading, message, onSelect, onScan, onRefresh, offlineFixture = false }: PrivateRiskPanelProps & { offlineFixture?: boolean }) {
   const [amountUsdc, setAmountUsdc] = useState('0.005');
   const candidate = privateCandidate(selectedId);
   const record = selectedRecord(status, selectedId);
   const recordForPolicy = loading || !status ? undefined : record;
   const policy = evaluateLivePaymentPolicy(recordForPolicy, amountUsdc);
-  const copy = decisionCopy(policy, recordForPolicy);
+  const copy = decisionCopy(policy, recordForPolicy, offlineFixture);
   const liveEvidence = usableLiveEvidence(recordForPolicy, loading);
   const hasPending = !!status?.records.some(item => item.state === 'pending');
   const exhausted = status ? status.usedRequests >= status.maxRequests : false;
@@ -193,7 +194,7 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
         <p>Screen recipients before autonomous payments.</p>
       </div>
       <div className="private-risk-badges" aria-label="Demo status">
-        <span className={liveEvidence ? 'private-risk-badge is-live' : 'private-risk-badge'}>Intercepta {liveEvidence ? 'Live' : record ? 'Unavailable' : 'Awaiting'}</span>
+        <span className={liveEvidence && !offlineFixture ? 'private-risk-badge is-live' : 'private-risk-badge'}>{offlineFixture ? 'SIMULATED' : `Intercepta ${liveEvidence ? 'Live' : record ? 'Unavailable' : 'Awaiting'}`}</span>
         <span className="private-risk-badge">Policy v1</span>
       </div>
     </header>
@@ -219,8 +220,9 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
       </section>
 
       <section className="private-risk-card private-risk-evidence" aria-labelledby="private-risk-evidence-title">
-        <div className="private-risk-step"><span>02</span><div><p>STEP 02</p><h2 id="private-risk-evidence-title">Intercepta evidence</h2></div></div>
-        <Evidence record={recordForPolicy} live={liveEvidence} />
+        <div className="private-risk-step"><span>02</span><div><p>STEP 02</p><h2 id="private-risk-evidence-title">{offlineFixture ? 'Synthetic provider evidence' : 'Intercepta evidence'}</h2></div></div>
+        {offlineFixture && <p className="private-risk-note">SIMULATED · Not a live Intercepta response</p>}
+        <Evidence record={recordForPolicy} live={liveEvidence} offlineFixture={offlineFixture} />
         <details className="private-risk-details">
           <summary>Technical details</summary>
           {recordForPolicy?.risk ? <ScanDiagnostics risk={recordForPolicy.risk} /> : <p>No bounded diagnostics are available for this recipient.</p>}
@@ -241,7 +243,7 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           <div><dt>Reason code</dt><dd>{policy.reasonCode}</dd></div>
         </dl>
         <div className="private-risk-why"><span className="private-risk-label">Why</span><p>{copy.why}</p></div>
-        <p className="private-risk-policy-boundary">Project-defined demo rules use Intercepta observations. This is not an Intercepta verdict or execution permission.</p>
+        <p className="private-risk-policy-boundary">{offlineFixture ? 'Project-defined demo rules use synthetic provider evidence. This is not a live Intercepta response or execution permission.' : 'Project-defined demo rules use Intercepta observations. This is not an Intercepta verdict or execution permission.'}</p>
       </section>
 
       <section className="private-risk-card private-risk-execution" aria-labelledby="private-risk-execution-title">

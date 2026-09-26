@@ -41,7 +41,7 @@ try {
     const req = route.request(), url = new URL(req.url());
     if (url.origin !== origin) { unexpected.push(req.url()); await route.abort(); return; }
     if (url.pathname === '/' && req.method() === 'GET') {
-      await route.fulfill({ contentType: 'text/html', body: html.replace('<body>', '<body><p style="margin:0;padding:8px;background:#fff0b0;color:#111;text-align:center">OFFLINE FIXTURE — saved simulated evidence; no live scan or payment.</p>') }); return;
+      await route.fulfill({ contentType: 'text/html', body: html.replace('<div id="root"></div>', '<div id="root" data-evidence-presentation="offline-fixture"></div>').replace('<body>', '<body><p style="margin:0;padding:8px;background:#fff0b0;color:#111;text-align:center">OFFLINE FIXTURE — saved simulated evidence; no live scan or payment.</p>') }); return;
     }
     if (url.pathname === '/api/private-risk/status' && req.method() === 'GET') {
       statusReads++;
@@ -55,7 +55,19 @@ try {
     if (url.pathname !== '/favicon.ico') unexpected.push(req.method() + ' ' + url.pathname);
     await route.abort();
   });
-  await page.goto(origin);
+  async function assertFixturePresentation() {
+  const evidence=page.locator('.private-risk-evidence');
+  await expect(evidence.getByRole('heading',{name:'Synthetic provider evidence',exact:true})).toBeVisible();
+  await expect(evidence).toContainText('Not a live Intercepta response');
+  await expect(evidence.locator('dl')).toContainText('SIMULATED');
+  await expect(page.locator('.private-risk-badges')).toContainText('SIMULATED');
+  await expect(page.locator('.private-risk-badge.is-live')).toHaveCount(0);
+  await expect(page.getByText('LIVE',{exact:true})).toHaveCount(0);
+  await expect(page.locator('.private-risk-policy')).not.toContainText('Intercepta reported');
+  await expect(page.locator('.private-risk-policy')).not.toContainText('complete live response');
+ }
+ await page.goto(origin);
+ await assertFixturePresentation();
   const audit = page.locator('details').filter({ has: page.locator(':scope > summary', { hasText: /^Technical \/ audit details$/ }) });
   await expect(audit).toHaveCount(1);
   assert.equal(await audit.evaluate(el => el.open), false);
@@ -74,6 +86,7 @@ try {
   }
   async function project(id, value) {
     await recipient.selectOption(id); await amount.fill(value); await expect(snapshotButton).toBeEnabled();
+    await assertFixturePresentation();
     const before = Date.now(), result = await download(snapshotButton, `project-decision-${id}.json`);
     assert.deepEqual(Object.keys(result).sort(), ['schemaVersion','exportedAt','intent','policy','originalScanReceipt','execution'].sort());
     assert.equal(result.schemaVersion, 'project-payment-decision-receipt-v1');
@@ -114,6 +127,7 @@ try {
   await page.screenshot({path:new URL('snapshot-mobile.png',output).pathname,fullPage:true});
   await page.reload(); await audit.locator(':scope > summary').click();
   await expect(snapshotButton).toBeEnabled(); assert.equal(scanPosts,0);
+  await assertFixturePresentation();
   assert.equal(JSON.stringify(status),initialStatus); assert.deepEqual(unexpected,[]);
   checks.push('mobile download and reload reuse saved evidence; status/provider timestamps and quota unchanged');
   const receipt={result:'PASS',candidate:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),htmlSha256:createHash('sha256').update(html).digest('hex'),checks,downloads:downloads.length,statusReads,scanPosts,unexpectedNetwork:0,liveScans:0,payments:0,execution:'NOT_CONNECTED'};

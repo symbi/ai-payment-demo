@@ -16,20 +16,34 @@ const status={contractRevision:PRIVATE_SCAN_REVISION,mode:'private-scan-only',pa
 const statusBefore=JSON.stringify(status);
 const grant={contractRevision:'task-grant-v1',context:{taskId:'fixture',taskName:'Fixture',agentId:'fixture',agentName:'Fixture',account:null,payTo:null,network:TEST_NETWORK,asset:TEST_USDC,resource:RESOURCE_PATH},grant:null,canSave:false,paymentEnabled:false,executionConnected:false,accounting:{state:'not_connected',spentAtomic:null,reservedAtomic:null,availableAtomic:null,walletBalanceAtomic:null}};
 await mkdir(output,{recursive:true}); const html=await readFile(new URL('docs/private-risk.html',root),'utf8');
+let fixturePresentation=true;
+assert.ok(html.includes('<div id="root"></div>'), 'production HTML must default to ordinary evidence rendering');
 const browser=await chromium.launch({channel:'chrome',headless:true});
 try {
  const page=await browser.newPage({viewport:{width:1440,height:1000},serviceWorkers:'block',acceptDownloads:true});
  await page.route('**/*',async route=>{
   const req=route.request(),url=new URL(req.url());requests.push({method:req.method(),path:url.pathname});
   if(url.origin===origin && req.method()==='GET') {
-   if(url.pathname==='/') return route.fulfill({contentType:'text/html',body:html.replace('<body>','<body><p style="padding:8px;background:#fff0b0;color:#111">OFFLINE BROWSER FIXTURE — no live provider or payment.</p>')});
+   if(url.pathname==='/') return route.fulfill({contentType:'text/html',body:fixturePresentation ? html.replace('<div id="root"></div>', '<div id="root" data-evidence-presentation="offline-fixture"></div>').replace('<body>','<body><p style="padding:8px;background:#fff0b0;color:#111">OFFLINE BROWSER FIXTURE — no live provider or payment.</p>') : html});
    if(url.pathname==='/api/private-risk/status') return route.fulfill({json:status});
    if(url.pathname==='/api/task-grant') return route.fulfill({json:grant});
    if(url.pathname==='/favicon.ico') return route.abort();
   }
   unexpected.push(req.method()+' '+req.url());await route.abort();
  });
+ async function assertFixturePresentation() {
+  const evidence=page.locator('.private-risk-evidence');
+  await expect(evidence.getByRole('heading',{name:'Synthetic provider evidence',exact:true})).toBeVisible();
+  await expect(evidence).toContainText('Not a live Intercepta response');
+  await expect(evidence.locator('dl')).toContainText('SIMULATED');
+  await expect(page.locator('.private-risk-badges')).toContainText('SIMULATED');
+  await expect(page.locator('.private-risk-badge.is-live')).toHaveCount(0);
+  await expect(page.getByText('LIVE',{exact:true})).toHaveCount(0);
+  await expect(page.locator('.private-risk-policy')).not.toContainText('Intercepta reported');
+  await expect(page.locator('.private-risk-policy')).not.toContainText('complete live response');
+ }
  await page.goto(origin);
+ await assertFixturePresentation();
  const heading=page.getByRole('heading',{name:'Policy Sandbox — Synthetic Scenarios',exact:true});
  await expect(heading).toBeVisible(); const sandbox=heading.locator('xpath=ancestor::section[1]');
  await expect(sandbox).toContainText('SIMULATED');await expect(sandbox).toContainText('Synthetic policy scenario');
@@ -61,7 +75,13 @@ try {
  assert.ok(mobileBoxes[0].top<mobileBoxes[1].top && mobileBoxes[1].top<mobileBoxes[2].top);assert.equal(mobileBoxes[0].left,mobileBoxes[2].left);
  await page.screenshot({path:new URL('mobile.png',output).pathname,fullPage:true});
  await sandbox.screenshot({path:new URL('sandbox-mobile.png',output).pathname});
+ await assertFixturePresentation();
  assert.equal(JSON.stringify(status),statusBefore);assert.equal(unexpected.length,0);assert.equal(requests.filter(r=>r.method!=='GET').length,0);
+ fixturePresentation=false;await page.reload();
+ await expect(page.locator('.private-risk-badges')).toContainText('Intercepta Live');
+ await expect(page.locator('.private-risk-evidence').getByText('LIVE',{exact:true})).toBeVisible();
+ await expect(page.locator('.private-risk-evidence').getByRole('heading',{name:'Intercepta evidence',exact:true})).toBeVisible();
+ assert.equal(JSON.stringify(status),statusBefore);assert.equal(unexpected.length,0);
  const result={result:'PASS',candidate:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),htmlSha256:createHash('sha256').update(html).digest('hex'),scenarios:3,checks:['same score with different traits yields limited/deny/hold through shared engine','explicit synthetic section separated from live intent and receipt','desktop/mobile no overflow and no scenario controls','render and amount editing produce zero API additions, POSTs or external requests'],unexpectedNetwork:0,scanPosts:0,liveScans:0,payments:0,execution:'NOT_CONNECTED'};
  await writeFile(new URL('receipt.json',output),JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result));
 } finally {await browser.close();}

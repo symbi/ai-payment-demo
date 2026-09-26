@@ -29,7 +29,7 @@ try{
   const req=route.request(),url=new URL(req.url());
   if(url.origin!==origin){unexpected.push(req.url());await route.abort();return;}
   if(url.pathname==='/'){
-   const html=(await readFile(new URL('docs/private-risk.html',root),'utf8')).replace('<body>','<body><p style="margin:0;padding:8px;background:#fff0b0;color:#111;text-align:center">OFFLINE FIXTURE — simulated provider evidence. No live scan or payment.</p>');
+   const html=(await readFile(new URL('docs/private-risk.html',root),'utf8')).replace('<div id="root"></div>', '<div id="root" data-evidence-presentation="offline-fixture"></div>').replace('<body>','<body><p style="margin:0;padding:8px;background:#fff0b0;color:#111;text-align:center">OFFLINE FIXTURE — simulated provider evidence. No live scan or payment.</p>');
    await route.fulfill({contentType:'text/html',body:html});return;
   }
   if(url.pathname==='/api/private-risk/status' && req.method()==='GET'){statusReads++;await route.fulfill({contentType:'application/json',body:JSON.stringify(status())});return;}
@@ -43,7 +43,19 @@ try{
   if(url.pathname!=='/favicon.ico')unexpected.push(req.method()+' '+url.pathname);
   await route.abort();
  });
+ async function assertFixturePresentation() {
+  const evidence=page.locator('.private-risk-evidence');
+  await expect(evidence.getByRole('heading',{name:'Synthetic provider evidence',exact:true})).toBeVisible();
+  await expect(evidence).toContainText('Not a live Intercepta response');
+  await expect(evidence.locator('dl')).toContainText('SIMULATED');
+  await expect(page.locator('.private-risk-badges')).toContainText('SIMULATED');
+  await expect(page.locator('.private-risk-badge.is-live')).toHaveCount(0);
+  await expect(page.getByText('LIVE',{exact:true})).toHaveCount(0);
+  await expect(page.locator('.private-risk-policy')).not.toContainText('Intercepta reported');
+  await expect(page.locator('.private-risk-policy')).not.toContainText('complete live response');
+ }
  await page.goto(origin);
+ await assertFixturePresentation();
  await expect(page.getByRole('heading',{name:'Agent Payment Guard',exact:true})).toBeVisible();
  const assess=page.getByRole('button',{name:'Assess Payment',exact:true});
  const amount=page.getByLabel(/Amount/).first();
@@ -90,7 +102,7 @@ try{
   assert.equal(attempted.length,count,'selection must not scan');
   await assess.click();await expect(page.locator('.private-risk-policy').getByText(decision,{exact:true}).first()).toBeVisible();
   await expect(page.getByText(/NOT.CONNECTED|Not connected/).first()).toBeVisible();
-  assert.equal(attempted.length,count+1);await expect(assess).toBeDisabled();
+  assert.equal(attempted.length,count+1);await expect(assess).toBeDisabled();await assertFixturePresentation();
  }
  await outcome('H1','ALLOW');
  await amount.fill('');await expect(page.locator('.private-risk-policy').getByText('HOLD',{exact:true}).first()).toBeVisible();
@@ -99,7 +111,7 @@ try{
  await outcome('H2','ALLOW WITH LIMIT');
  await expect(page.getByText(/0\.001/).first()).toBeVisible();
  await page.screenshot({path:new URL('limited-desktop.png',output).pathname,fullPage:true});
- await amount.fill('0.001');await expect(page.locator('.private-risk-policy').getByText('ALLOW WITH LIMIT',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,2);
+ await amount.fill('0.001');await assertFixturePresentation();await expect(page.locator('.private-risk-policy').getByText('ALLOW WITH LIMIT',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,2);
  await outcome('G1','DENY');
  await expect(page.getByText('sanction_address',{exact:true}).first()).toBeVisible();
  checks.push('same score50 mixer limits and sanction denies; cap changes never execute');
@@ -112,7 +124,7 @@ try{
  await page.reload();await expect(page.getByRole('heading',{name:'Agent Payment Guard',exact:true})).toBeVisible();
  await expect(page.locator('.private-risk-policy').getByText('ALLOW',{exact:true}).first()).toBeVisible();assert.equal(attempted.length,5);
  checks.push('refresh reads saved evidence without repeat assessment');
- showSavedGrant=true;await page.reload();
+ showSavedGrant=true;await page.reload();await assertFixturePresentation();
  await advanced.locator(':scope > summary').click();
  await expect(page.getByText(/0\.025 USDC/).first()).toBeVisible();
  await expect(page.getByText(/0\.003 USDC/).first()).toBeVisible();
