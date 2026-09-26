@@ -16,7 +16,7 @@ signal, not a numerical decision threshold. Task permissions can be saved and
 inspected; wallet signing, settlement, and end-to-end payment execution remain
 **NOT CONNECTED**.
 
-[Run the demo](docs/SECOND_COMPUTER.md) · [Implementation and limits](docs/HANDOFF.md) · [Open work](docs/TODO.md) · [Logo](docs/assets/agent-payguard-logo.png)
+[Run the demo — English guide](docs/RUN_DEMO.md) · [Implementation and limits](docs/HANDOFF.md) · [Open work](docs/TODO.md) · [Logo](docs/assets/agent-payguard-logo.png)
 
 ## What the current prototype demonstrates
 
@@ -57,14 +57,14 @@ enforced remaining-budget ledger, and real payment execution are still open work
 ## Run locally
 
 Use the Node version in [`.nvmrc`](.nvmrc) and the locked dependencies. Follow
-the [personal-computer startup and acceptance guide](docs/SECOND_COMPUTER.md),
-including its configuration and quota checks. The page is served only on
-`127.0.0.1:47915`.
+the [English startup and reviewer guide](docs/RUN_DEMO.md) for a local Decision
+Lab walkthrough or an authorized manual risk check. The page is served only on
+`127.0.0.1:47915`; this is a local application, not a public hosted demo.
 
 ```sh
 npm run demo:prepare   # local page build; no risk request
-npm run demo:check     # offline preflight; no network or service
-npm run demo:live      # same Demo on the personal Mac, after quota/key checks
+npm run demo:check     # offline readiness check for optional live scanning
+npm run demo:live      # local app; see the English guide for environment setup
 ```
 
 `demo:check` passing proves only local preparation. It does not prove provider
