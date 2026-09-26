@@ -131,7 +131,7 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           {PRIVATE_RISK_CANDIDATES.map(item => <option key={item.id} value={item.id}>{item.id} · {item.context}</option>)}
         </select>
         <div className="private-risk-address"><strong>{candidate.id}</strong><code>{candidate.address}</code><p>{candidate.context}</p></div>
-        <p className="private-risk-note">候选来自已有文档，仅作为待扫描线索；页面不填写 API key，不要求钱包连接、身份认证、Agent 预算或限额。</p>
+        <p className="private-risk-note">候选说明是用户提供的来源线索，尚未核验，不是 Intercepta 扫描结论；只有下方保存的 API 返回属于实测结果。页面不填写 API key，不要求钱包连接、身份认证、Agent 预算或限额。</p>
       </section>
 
       <section className="private-risk-card" aria-labelledby="private-risk-result-title">

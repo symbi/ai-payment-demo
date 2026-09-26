@@ -61,7 +61,12 @@ try {
   });
   async function runCheck(){
     await page.goto(origin);
+    // Reload now restores the previous request. Request a new quote explicitly
+    // through the existing offer view after the recovered result is confirmed.
+    await page.locator('details.payment-details > summary').first().click();
+    await page.getByRole('button',{name:'Report offer',exact:true}).click();
     await page.getByRole('button',{name:'Get quote',exact:false}).click();
+    await page.getByRole('button',{name:'Agent 受控付款',exact:true}).click();
     await page.getByRole('button',{name:'Check request',exact:false}).click();
   }
   await runCheck();

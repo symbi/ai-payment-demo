@@ -211,10 +211,10 @@ it('expands the authorized budget without resetting previous attempts or auto-sc
   for (const candidate of PRIVATE_RISK_CANDIDATES.filter(c => !['H1', 'G1'].includes(c.id))) {
     expect((await inject(expanded, 'POST', '/api/private-risk/scan', { candidateId: candidate.id })).status).toBe(200);
   }
-  expect(scanner).toHaveBeenCalledTimes(7);
+  expect(scanner).toHaveBeenCalledTimes(PRIVATE_RISK_CANDIDATES.length);
   expect((await inject(expanded, 'POST', '/api/private-risk/scan', { candidateId: 'H1' })).status).toBe(409);
   const reduced = app(path, scanner);
-  expect((await inject(reduced, 'GET', '/api/private-risk/status')).json.usedRequests).toBe(7);
+  expect((await inject(reduced, 'GET', '/api/private-risk/status')).json.usedRequests).toBe(PRIVATE_RISK_CANDIDATES.length);
 });
 it.each([0, -1, 1.5, 1001, NaN])('rejects invalid request budget %s before scanning', maxRequests => {
   const scanner = vi.fn<RiskScanner>();
