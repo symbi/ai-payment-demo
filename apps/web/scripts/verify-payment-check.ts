@@ -1,48 +1,58 @@
-/** Display-only payment check. Every API is intercepted; provider calls are forbidden. */
+/** Real-order UI wiring with intercepted transport only; never accesses the running buyer/provider. */
 import { chromium, expect } from '@playwright/test';
 import { createServer } from 'vite';
 import type { AddressInfo } from 'node:net';
 import assert from 'node:assert/strict';
 import { TEST_USDC } from '../../../shared/contracts.ts';
-const vite=await createServer({configFile:'apps/web/vite.config.ts',server:{host:'127.0.0.1',port:0}});
-let browser:Awaited<ReturnType<typeof chromium.launch>>|undefined;
+const vite = await createServer({ configFile: 'apps/web/vite.config.ts', server: { host: '127.0.0.1', port: 0 } });
+let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 try {
- await vite.listen();const origin=`http://127.0.0.1:${(vite.httpServer!.address() as AddressInfo).port}`;
- browser=await chromium.launch({channel:'chrome',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1100}});
- const calls:string[]=[];const errors:string[]=[];let id='';let failQuery=false;let huge=false;
- page.on('pageerror',e=>errors.push(e.message));
- await page.route('**/*',async route=>{const u=new URL(route.request().url());if(u.origin!==origin)return route.abort();if(!u.pathname.startsWith('/api/'))return route.continue();calls.push(u.pathname);
- if(u.pathname==='/api/health')return route.fulfill({json:{resourcePath:'/api/contract-insights',buyer:{connected:true},seller:{connected:true,ready:false,message:'Fixture'},configuration:{payToConfigured:true,interceptaKeyConfigured:true},paymentEnabled:false}});
- if(u.pathname==='/api/inspect'){id=route.request().postDataJSON().requestId;return route.fulfill({json:{requestId:id,status:huge?'denied':'held',decision:huge?'deny':'hold',reasons:['Unverified'],terms:{scheme:'exact',amount:huge?'9'.repeat(78):'1000',asset:TEST_USDC,payTo:huge?'invalid-recipient-'.padEnd(128,'x'):'0x2222222222222222222222222222222222222222',network:'eip155:84532'},risk:huge?undefined:{source:'live',decision:'hold',reasons:['Unverified'],address:'0x2222222222222222222222222222222222222222',provider:'intercepta',checkedAt:'2026-09-26T00:00:00Z',scan:{transport:'received',toxicScore:0,traitsCount:0,requestedNetwork:'eip155:84532',coverage:'unverified',semantics:'unverified'}},counters:{sign:0,settle:0},events:[],aiMode:'not_configured',paymentEnabled:false}});}
- if(u.pathname.startsWith('/api/requests/')&&failQuery)return route.abort('connectionreset');throw new Error(`Forbidden API ${u.pathname}`);});
- await page.goto(origin);await expect(page.getByRole('heading',{name:'Intercepta',exact:true})).toBeVisible();
- await expect(page.getByRole('navigation')).toHaveCount(0);await expect(page.locator('.check-source').getByText('Offline example · Synthetic evidence',{exact:true})).toBeVisible();
- await expect(page.getByRole('heading',{name:'Not checked',exact:true})).toBeVisible();
+ await vite.listen(); const origin = `http://127.0.0.1:${(vite.httpServer!.address() as AddressInfo).port}`;
+ browser = await chromium.launch({ channel: 'chrome', headless: true }); const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+ const calls: string[] = []; const errors: string[] = []; let id = ''; let mode = 'legacy'; let healthEnabled = false; let resultEnabled = false; let failQuery = false; let invalidQuote = false;
+ const terms = () => ({ scheme: 'exact', network: 'eip155:84532', asset: TEST_USDC, amount: '1000', payTo: invalidQuote ? 'invalid-recipient-'.padEnd(128, 'x') : '0x2222222222222222222222222222222222222222' });
+ const result = () => ({ requestId: id, status: 'held', decision: 'hold', reasons: ['Risk coverage is unverified.'], terms: terms(), events: [], counters: { sign: 0, settle: 0 }, paymentEnabled: resultEnabled, aiMode: 'not_configured', risk: { decision: 'hold', source: 'live', reasons: ['Coverage unverified'], address: terms().payTo, checkedAt: '2026-09-26T00:00:00Z', provider: 'intercepta', scan: { transport: 'received', toxicScore: 0, traitsCount: 0, requestedNetwork: 'eip155:84532', coverage: 'unverified', semantics: 'unverified' } } });
+ const execution = () => ({ operationId: 'op-1', decision: 'hold', reasons: ['Coverage unverified'], reasonCodes: ['COVERAGE_UNVERIFIED'], evidence: { source: 'live', evidenceId: 'scan-1', address: terms().payTo, checkedAt: '2026-09-26T00:00:00Z', requestedPaymentNetwork: 'eip155:84532', providerEvidenceNetwork: null, coverage: 'unverified', semantics: 'unverified' }, checkedQuoteHash: null, signingInputHash: null, signing: 'not_signed', submission: 'not_submitted', settlement: 'not_settled', retryAllowed: false, taskComplete: false });
+ page.on('pageerror', error => errors.push(error.message));
+ await page.route('**/*', async route => {
+   const url = new URL(route.request().url()); if (url.origin !== origin) return route.abort(); if (!url.pathname.startsWith('/api/')) return route.continue(); calls.push(url.pathname);
+   if (url.pathname === '/api/health') return route.fulfill({ json: { resourcePath: '/api/contract-insights', buyer: { connected: true }, seller: { connected: true, ready: false, message: 'Fixture' }, configuration: { payToConfigured: true, interceptaKeyConfigured: true }, paymentEnabled: healthEnabled } });
+   if (url.pathname === '/api/inspect') { id = route.request().postDataJSON().requestId; assert.equal(route.request().postDataJSON().prompt, 'Contract Insights'); return route.fulfill({ json: { ...result(), risk: undefined } }); }
+   if (url.pathname === '/api/pay' || url.pathname === `/api/requests/${id}`) {
+     if (url.pathname === '/api/pay') assert.equal(route.request().postDataJSON().requestId, id);
+     if (mode === 'timeout' || failQuery && url.pathname.startsWith('/api/requests/')) return route.abort('connectionreset');
+     const e = execution(); const value: any = { ...result(), execution: mode === 'legacy' ? undefined : e };
+     if (mode === 'legacy-no-scan') { delete value.execution; delete value.risk; }
+     if (['signing', 'submission', 'settlement'].includes(mode)) value.execution[mode] = 'unknown';
+     if (mode === 'malformed') value.execution.evidence.coverage = ['verified'];
+     if (mode === 'wrong-id') value.requestId = 'different-id';
+     if (mode === 'settled') { Object.assign(value.execution, { decision: 'allow', signing: 'signed', submission: 'submitted', settlement: 'settled', taskComplete: true }); value.status = 'paid'; value.data = { kind: 'public-sample' }; }
+     return route.fulfill({ json: value });
+   }
+   throw new Error(`Forbidden API ${url.pathname}`);
+ });
+ const card = page.locator('.live-payment-check > .single-payment-card');
+ const countPay = () => calls.filter(path => path === '/api/pay').length;
+ const quote = async () => { await page.goto(origin); await page.getByRole('button', { name: 'Get quote', exact: true }).click(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeVisible(); };
+ await page.goto(origin); await expect(page.getByRole('button', { name: 'Get quote', exact: true })).toBeEnabled(); assert.equal(countPay(), 0); assert.equal(calls.filter(p => p === '/api/inspect').length, 0);
  await expect(page.getByLabel('Evidence view')).not.toBeVisible();
- await expect(page.locator('.recipient-line')).toContainText('Recipient');
- await page.getByRole('button',{name:'Preview check'}).click();await expect(page.getByRole('heading',{name:'Block',exact:true})).toBeVisible();
- const choose=async(value:string)=>{await page.locator('.demo-examples').evaluate(e=>{(e as HTMLDetailsElement).open=true;});await page.getByLabel('Evidence view').selectOption(value);await page.locator('.demo-examples>summary').click();};
- const start=calls.length;
- for(const [value,decision] of [['block','Block'],['pause','Pause'],['continue','Continue']]){
- await choose(value);await expect(page.getByRole('heading',{name:'Not checked',exact:true})).toBeVisible();
- await page.getByRole('button',{name:'Preview check'}).click();await expect(page.getByRole('heading',{name:decision,exact:true})).toBeVisible();
- await expect(page.getByText('Decision only · No payment',{exact:true})).toBeVisible();
+ await quote(); await expect(card).toContainText('0x2222…2222'); await expect(card).toContainText('eip155:84532'); await expect(card.locator('.payment-status')).toContainText('Signature: Unreported'); assert.equal(countPay(), 0);
+ await card.getByRole('button', { name: 'Check risk' }).dblclick(); await expect(card.getByRole('heading', { name: 'Check returned · Execution unreported' })).toBeVisible(); assert.equal(countPay(), 1); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled(); await expect(card).toContainText('Raw score 0 (uninterpreted)');
+ const beforeQuery = countPay(); await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('button', { name: 'Query request' })).toBeEnabled(); assert.equal(countPay(), beforeQuery);
+ const details = page.locator('.live-payment-check > .payment-details'); await details.locator(':scope > summary').click(); await details.locator('.offline-examples > summary').click(); const demo = details.locator('.offline-examples'); await demo.getByRole('button', { name: 'Preview check' }).click(); await expect(demo.getByRole('heading', { name: 'Block', exact: true })).toBeVisible(); assert.equal(countPay(), beforeQuery);
+ for (const state of ['signing', 'submission', 'settlement', 'malformed', 'wrong-id', 'timeout']) {
+   mode = state; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible(); await expect(card.locator('.payment-status')).toContainText('Signature: Unknown'); await expect(card.locator('.payment-status')).toContainText('Settlement: Unknown'); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled();
  }
- assert.equal(calls.length,start,'offline switches/checks must make zero API requests');
- for(const width of [1440,390,320]){await page.setViewportSize({width,height:950});assert.equal(await page.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),true);await page.evaluate(()=>{(document.activeElement as HTMLElement)?.blur();scrollTo(0,0);});await page.screenshot({path:`/private/tmp/intercepta-simple-${width}.png`,fullPage:true});}
- await choose('current');await expect(page.getByRole('button',{name:'Check risk'})).toBeDisabled();
- await page.locator('.payment-details>summary').click();await page.getByRole('button',{name:'Report offer',exact:true}).click();await page.getByRole('button',{name:'Get quote'}).click();
- await expect(page.getByRole('heading',{name:'Scan received',exact:true})).toBeVisible();
- await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await choose('current');
- const before=calls.length;await page.getByRole('button',{name:'Check risk'}).click();await expect(page.getByRole('heading',{name:'Pause',exact:true})).toBeVisible();
- await expect(page.locator('.check-source').getByText('Current request · Live provider response',{exact:true})).toBeVisible();
- await page.locator('.payment-details>summary').click();await expect(page.locator('.payment-details').getByText('0 · uninterpreted',{exact:true})).toBeVisible();assert.equal(calls.length,before);
- await page.getByRole('button',{name:'Saved request',exact:true}).click();failQuery=true;await page.getByRole('button',{name:'Query request'}).click();
- await expect(page.getByRole('heading',{name:'Status unknown',exact:true})).toBeVisible();
- await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await choose('current');await page.getByRole('button',{name:'Check risk'}).click();
- await expect(page.getByRole('heading',{name:'Pause',exact:true})).toBeVisible();await expect(page.locator('.payment-status')).toContainText('Unconfirmed');
- huge=true;await page.reload();await page.locator('.payment-details>summary').click();await page.getByRole('button',{name:'Report offer',exact:true}).click();await page.getByRole('button',{name:'Get quote'}).click();await expect(page.getByRole('heading',{name:'Declined',exact:true})).toBeVisible();await page.getByRole('navigation').getByRole('button',{name:'Intercepta',exact:true}).click();await choose('current');await page.getByRole('button',{name:'Check risk'}).click();await expect(page.getByRole('heading',{name:'Block',exact:true})).toBeVisible();
- for(const width of [390,320]){await page.setViewportSize({width,height:950});assert.equal(await page.locator('html').evaluate(e=>e.scrollWidth<=innerWidth),true,'long current quote must not overflow');assert.equal(await page.locator('.single-payment-card').evaluate(e=>e.scrollWidth<=e.clientWidth),true);}
- assert.equal(calls.filter(p=>p==='/api/pay').length,0);assert.equal(calls.filter(p=>p==='/api/inspect').length,2);assert.deepEqual(errors,[]);
- console.log(JSON.stringify({result:'PASS',checks:['collapsed scenarios/default preview/recipient label','single order/action/no primary nav','offline provenance persists','switch resets checked state','continue/block/pause examples','no API on display switches/check','empty real mode disabled','actual quote/zero-score stays paused','unknown request remains paused/unconfirmed','original request preserved','1440/390/320 no overflow','no pay/provider calls','78-digit denied amount and 128-char invalid recipient wrap', 'no runtime errors'],evidence:'isolated fixtures only'}));
-}finally{await browser?.close();await vite.close();}
+ mode = 'settlement'; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
+ mode = 'legacy-no-scan'; await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
+ mode = 'timeout'; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible();
+ mode = 'legacy-no-scan'; await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('heading', { name: 'Quote received' })).toBeVisible(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled();
+ mode = 'settled'; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card).toContainText('Policy permits · Not proof of payment'); await expect(card).toContainText('Completion is unconfirmed');
+ failQuery = true; await card.getByRole('button', { name: 'Query request' }).click(); await expect(card.getByRole('heading', { name: 'Status unknown' })).toBeVisible(); await expect(card.locator('.payment-status')).not.toContainText('settled'); failQuery = false;
+ mode = 'hold';
+ for (const gate of ['health', 'result', 'quote']) { healthEnabled = gate === 'health'; resultEnabled = gate === 'result'; invalidQuote = gate === 'quote'; const before = countPay(); await quote(); await expect(card.getByRole('button', { name: 'Check risk' })).toBeDisabled(); assert.equal(countPay(), before); }
+ healthEnabled = false; resultEnabled = false; invalidQuote = false; await quote(); await card.getByRole('button', { name: 'Check risk' }).click(); await expect(card.getByRole('heading', { name: 'Paused by backend policy' })).toBeVisible();
+ for (const width of [1440, 390, 320]) { await page.setViewportSize({ width, height: 950 }); assert.equal(await page.locator('html').evaluate(e => e.scrollWidth <= innerWidth), true); await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); scrollTo(0, 0); }); await page.screenshot({ path: `/private/tmp/intercepta-live-${width}.png`, fullPage: true }); }
+ assert.deepEqual(errors, []);
+ console.log(JSON.stringify({ result: 'PASS', checks: ['real-order default/no automatic inspect or scan', 'quote identity/recipient/network', 'explicit check only/duplicate lock', 'legacy execution unreported/zero uninterpreted', 'query no scan', 'offline samples isolated in Details', 'each execution unknown/missing execution cannot clear prior unknown','lost check plus legacy query never claims check receipt', 'malformed execution and mismatched ID', 'lost response remains unknown/no retry', 'settled/public sample not completion', 'query failure clears success display', 'health/result/payment quote gates', '1440/390/320 without overflow', 'no runtime errors'], evidence: 'intercepted fixtures only; no buyer/provider/payment calls' }));
+} finally { await browser?.close(); await vite.close(); }

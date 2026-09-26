@@ -11,7 +11,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   // The archived service starts behind the new payment-check entry.
   const openOffer = async () => {
-    await page.locator('.payment-details>summary').click();
+    await page.locator('.live-payment-check > .payment-details > summary').click();
     await page.getByRole('button', { name: 'Report offer', exact: true }).click();
     await page.locator('nav details>summary').click();
   };

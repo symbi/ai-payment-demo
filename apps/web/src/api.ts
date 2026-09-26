@@ -1,4 +1,4 @@
-import type { PurchaseResult } from '../../../shared/contracts.ts';
+import type { PurchaseResult, ProtectedPaymentOutcome } from '../../../shared/contracts.ts';
 import type { BuyerHealth } from '../../buyer/src/service.ts';
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every(x => typeof x === 'string');
@@ -31,10 +31,27 @@ export function isPurchase(v: unknown): v is PurchaseResult {
     if (scan.toxicScore !== undefined && (typeof scan.toxicScore !== 'number' || !Number.isFinite(scan.toxicScore))) return false;
     if (scan.traitsCount !== undefined && scan.traitsCount !== 0) return false;
   }
+  if (v.execution !== undefined && !isExecution(v.execution)) return false;
   return true;
 }
 export function displayAmount(atomic: string): string {
   if (!/^[1-9][0-9]{0,77}$/.test(atomic)) return 'Invalid amount';
   const digits = atomic.padStart(7, '0');
   return `${digits.slice(0, -6)}.${digits.slice(-6)}`.replace(/\.?0+$/, '');
+}
+
+const nullableString = (value: unknown) => value === null || typeof value === 'string';
+/** Validate every public execution field; missing legacy execution stays unreported. */
+export function isExecution(v: unknown): v is ProtectedPaymentOutcome {
+  if (!record(v) || typeof v.operationId !== 'string' || !v.operationId.trim() || !oneOf(v.decision, ['allow', 'deny', 'hold']) || !strings(v.reasonCodes) || !strings(v.reasons)) return false;
+  if (!nullableString(v.checkedQuoteHash) || !nullableString(v.signingInputHash) || !oneOf(v.signing, ['not_signed', 'signed', 'unknown']) || !oneOf(v.submission, ['not_submitted', 'submitted', 'unknown']) || !oneOf(v.settlement, ['not_settled', 'settled', 'failed', 'unknown']) || v.retryAllowed !== false || typeof v.taskComplete !== 'boolean') return false;
+  if (v.taskComplete && (v.settlement !== 'settled' || v.signing !== 'signed' || v.submission !== 'submitted')) return false;
+  if (v.submission === 'submitted' && v.signing === 'not_signed') return false;
+  if (v.settlement === 'settled' && (v.signing === 'not_signed' || v.submission === 'not_submitted')) return false;
+  const e = v.evidence;
+  return record(e) && oneOf(e.source, ['live', 'fixture', 'unavailable']) && ['evidenceId', 'address', 'checkedAt', 'providerEvidenceNetwork'].every(key => nullableString(e[key])) && typeof e.requestedPaymentNetwork === 'string' && oneOf(e.coverage, ['verified', 'unverified', 'mismatch']) && oneOf(e.semantics, ['verified', 'unverified']);
+}
+export function executionUnknown(result: PurchaseResult | null): boolean {
+  const e = result?.execution;
+  return result?.status === 'settlement_unknown' || !!e && [e.signing, e.submission, e.settlement].includes('unknown');
 }

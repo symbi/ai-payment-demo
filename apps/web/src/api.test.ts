@@ -35,3 +35,22 @@ it('rejects malformed scan facts instead of reporting receipt', () => {
 it.each(['address', 'checkedAt', 'provider'])('rejects invalid risk %s even without scan metadata', key => {
   for (const value of [{}, [], null, undefined]) expect(isPurchase({ ...valid, risk: { ...valid.risk, [key]: value } })).toBe(false);
 });
+
+const execution = { operationId: 'op-1', decision: 'hold', reasonCodes: ['COVERAGE_UNVERIFIED'], reasons: ['Coverage unverified'], evidence: { source: 'live', evidenceId: null, address: null, checkedAt: null, requestedPaymentNetwork: 'eip155:84532', providerEvidenceNetwork: null, coverage: 'unverified', semantics: 'unverified' }, checkedQuoteHash: null, signingInputHash: null, signing: 'not_signed', submission: 'not_submitted', settlement: 'not_settled', retryAllowed: false, taskComplete: false };
+it('accepts complete execution and nullable evidence without inventing missing fields', () => {
+  expect(isPurchase({ ...valid, execution })).toBe(true);
+  expect(isPurchase({ ...valid, execution: { ...execution, signing: 'unknown', submission: 'unknown', settlement: 'unknown' } })).toBe(true);
+});
+it('rejects every omitted execution field and malformed nested field', () => {
+  for (const key of Object.keys(execution)) { const partial = { ...execution } as Record<string, unknown>; delete partial[key]; expect(isPurchase({ ...valid, execution: partial }), key).toBe(false); }
+  for (const key of Object.keys(execution.evidence)) {
+    const partial = { ...execution.evidence } as Record<string, unknown>; delete partial[key];
+    expect(isPurchase({ ...valid, execution: { ...execution, evidence: partial } }), key).toBe(false);
+    expect(isPurchase({ ...valid, execution: { ...execution, evidence: { ...execution.evidence, [key]: [] } } }), key).toBe(false);
+  }
+});
+it('rejects coerced execution values and impossible completion', () => {
+  for (const [key, value] of Object.entries(execution)) expect(isPurchase({ ...valid, execution: { ...execution, [key]: [value] } }), key).toBe(false);
+  for (const change of [{ retryAllowed: true }, { taskComplete: true }, { submission: 'submitted' }, { settlement: 'settled' }, { taskComplete: true, signing: 'unknown', settlement: 'settled', submission: 'submitted' }]) expect(isPurchase({ ...valid, execution: { ...execution, ...change } })).toBe(false);
+  expect(isPurchase({ ...valid, execution: { ...execution, taskComplete: true, signing: 'signed', submission: 'submitted', settlement: 'settled' } })).toBe(true);
+});

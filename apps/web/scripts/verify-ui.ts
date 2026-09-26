@@ -19,7 +19,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   // The archived service starts behind the new payment-check entry.
   const openOffer = async () => {
-    await page.locator('.payment-details>summary').click();
+    await page.locator('.live-payment-check > .payment-details > summary').click();
     await page.getByRole('button', { name: 'Report offer', exact: true }).click();
     await page.locator('nav details>summary').click();
   };
@@ -77,7 +77,7 @@ try {
   await page.screenshot({ path: '/private/tmp/contract-services-mobile.png', fullPage: true });
   await page.getByRole('button', { name: 'Preview report', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Sample Report', exact: true })).toBeVisible();
-  await page.getByText('Source & method', { exact: true }).click();
+  await page.locator('.sample-preview details > summary').click();
   await expect(page.getByText(publicReport.source.sha256, { exact: true })).toBeVisible();
   await noOverflow(); assert.equal(inspectCalls, 0); assert.equal(payCalls, 0);
   await page.screenshot({ path: '/private/tmp/contract-preview-mobile.png', fullPage: true });
