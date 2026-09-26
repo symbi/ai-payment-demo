@@ -153,7 +153,7 @@ describe('four-step payment decision demo contract', () => {
     expect(text).toContain('USDC');
     expect(text).toContain('Ethereum Mainnet for screening');
     expect(text).toMatch(/Coverage:? unverified/i);
-    expect(text).toContain('Assess Payment');
+    expect(text).toContain('Run live assessment');
     expect(text).toContain('Screened before any signing or execution.');
     expect(html).toMatch(/<option[^>]*>Case H1<\/option>/);
     expect(text).toContain(candidate('H1').address);

@@ -185,6 +185,17 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           : exhausted ? `Attempt allowance used (${status.usedRequests}/${status.maxRequests}).`
             : record ? 'A saved record exists for this address; it is assessed locally without rescanning.' : '';
 
+  const savedAssessment = loading ? 'Loading saved assessment…'
+    : record?.state === 'pending' ? 'Assessment pending'
+      : record?.state === 'unavailable' ? 'Saved assessment unavailable'
+        : liveEvidence ? (offlineFixture ? 'Using saved simulated assessment' : 'Using saved live assessment')
+          : 'Using saved assessment · Evidence unavailable';
+  const savedAssessmentNote = record?.state === 'pending'
+    ? 'Refresh saved records to check the existing attempt. Do not submit another assessment.'
+    : record?.state === 'unavailable'
+      ? 'The saved attempt did not provide usable evidence. No automatic rescan. Refresh saved records to query its saved status.'
+      : 'No rescan required. Amount changes re-evaluate saved evidence locally. Refresh saved records does not refresh provider evidence or establish current safety.';
+
   if (!candidate) return <main className="private-risk-panel"><p className="private-risk-message" role="alert">The selected recipient was not found.</p></main>;
   return <main className="private-risk-panel" aria-labelledby="private-risk-title">
     <header className="private-risk-hero">
@@ -213,9 +224,11 @@ export function PrivateRiskPanel({ selectedId, status, loading, message, onSelec
           <div><span className="private-risk-label">Asset</span><strong>USDC</strong></div>
           <div><span className="private-risk-label">Network</span><strong>Ethereum Mainnet for screening</strong><small>eip155:1 · Coverage: unverified</small></div>
         </div>
-        <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>Assess Payment</button>
+        {record
+          ? <div className="private-risk-saved-assessment" role="status"><strong>{savedAssessment}</strong><p className="private-risk-note">{savedAssessmentNote}</p></div>
+          : <button className="private-risk-primary" type="button" disabled={scanDisabled} onClick={onScan}>{offlineFixture ? 'Run simulated assessment' : 'Run live assessment'}</button>}
         <p className="private-risk-note">Screened before any signing or execution.</p>
-        <p className="private-risk-status-copy">{loading ? 'Assessment in progress…' : scanDisabledReason || 'Manual one-address assessment. One attempt; no automatic retry.'}</p>
+        {!record && <p className="private-risk-status-copy">{loading ? 'Assessment in progress…' : scanDisabledReason || 'Manual one-address assessment. One attempt; no automatic retry.'}</p>}
         {message && <p className="private-risk-message" role="status">Address assessment state changed. Review the saved status and technical details.</p>}
       </section>
 

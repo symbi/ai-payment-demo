@@ -20,7 +20,7 @@ const record = (id, labels, state = 'completed') => ({
       toxicScore: labels.length ? 50 : 0, traitsCount: labels.length, traitLabels: labels, unknownTraitsCount: 0, additionalFieldsCount: 0 },
   } : null,
 });
-const records = [record('H1', []), record('H2', ['mixer_transfers']), record('G1', ['sanction_address']), record('G2', [], 'unavailable'), record('L1', [], 'pending')];
+const records = [record('H1', []), record('H2', ['mixer_transfers']), record('G1', ['sanction_address']), record('G2', [], 'unavailable'), record('L1', [], 'pending'), record('L2', [])];
 const status = { contractRevision: PRIVATE_SCAN_REVISION, mode: 'private-scan-only', paymentEnabled: false, ready: true,
   message: 'FIXTURE_PRIVATE_STATUS', maxRequests: 20, usedRequests: records.length, records };
 assert.ok(isPrivateScanStatus(status));
@@ -76,6 +76,12 @@ try {
   const originalButton = audit.getByRole('button', { name: '下载本次评估摘要', exact: true });
   const amount = page.getByLabel('Amount', { exact: true }), recipient = page.getByRole('combobox').first();
   await expect(snapshotButton).toBeEnabled();
+  await recipient.selectOption('L2');
+  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Using saved simulated assessment');
+  await expect(page.locator('.private-risk-saved-assessment')).toContainText('No rescan required');
+  await expect(page.locator('.private-risk-primary')).toHaveCount(0);
+  await amount.fill('0.001');assert.equal(scanPosts,0);
+  await page.screenshot({path:new URL('saved-L2-desktop.png',output).pathname,fullPage:true});
   async function download(button, name) {
     const event = page.waitForEvent('download'); await button.click(); const file = await event;
     assert.equal(await file.failure(), null); assert.equal(file.suggestedFilename(), name);
@@ -111,6 +117,8 @@ try {
   assert.deepEqual(original, buildRiskReceipt(status,'G1')); assert.equal(original.decision,'hold'); assert.equal(original.policy,undefined); assert.equal(original.amountUsdc,undefined);
   assert.equal((await project('G2','0.005')).policy.decision,'HOLD');
   assert.equal((await project('L1','0.005')).policy.decision,'HOLD');
+  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Assessment pending');
+  await expect(page.locator('.private-risk-primary')).toHaveCount(0);
   checks.push('candidate switch exports its own decision; pending/unavailable HOLD and original v2 stay distinct');
   await recipient.selectOption('P1'); await expect(snapshotButton).toBeDisabled();
   await recipient.selectOption('H1'); await amount.fill(''); await expect(snapshotButton).toBeDisabled();
@@ -118,6 +126,8 @@ try {
   const technical = page.locator('summary').filter({hasText:/^Technical details$/}); await technical.click();
   holdStatus=true; await page.getByRole('button',{name:'Refresh saved records',exact:true}).click();
   await expect(snapshotButton).toBeDisabled(); assert.equal(scanPosts,0);
+  await expect(page.locator('.private-risk-saved-assessment')).toContainText('Loading saved assessment');
+  await expect(page.locator('.private-risk-primary')).toHaveCount(0);
   assert.equal(typeof releaseStatus,'function'); holdStatus=false; releaseStatus();
   await expect(snapshotButton).toBeEnabled(); await technical.click();
   checks.push('missing/invalid current intent and in-flight refresh cannot download a stale decision');
