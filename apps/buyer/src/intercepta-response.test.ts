@@ -62,3 +62,10 @@ it('returns unknown if a malformed object throws while being read', () => {
   const value = { get toxicScore(): never { throw new Error('bad input'); }, traits: [] };
   expect(parseInterceptaResponse(value)).toEqual(unknown);
 });
+
+it.each([{ name: 'new_trait' }, { name: 'new_trait', risk: 'changed', txsCount: {}, description: null }])('keeps known evidence when unknown variant has a different structure', unknownTrait => {
+  expect(parseInterceptaResponse({ toxicScore: 4, traits: [validTrait, unknownTrait] })).toMatchObject({ kind: 'observed', traits: [validTrait], unknownTraitsCount: 1 });
+});
+it.each([{ name: '' }, { name: ' ' }, { name: 'a'.repeat(121) }, Object.fromEntries([['name','new_trait'], ...Array.from({length:20},(_,i)=>['key'+i,0])])])('rejects unbounded or nameless unknown variants', trait => {
+  expect(parseInterceptaResponse({ toxicScore: 4, traits: [trait] })).toEqual(unknown);
+});

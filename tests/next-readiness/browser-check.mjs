@@ -15,6 +15,7 @@ let journalPath = join(directory, 'grant.json');
 let store = new TaskGrantStore({path:journalPath,context});
 const html = (await readFile(new URL('../../docs/private-risk.html', import.meta.url), 'utf8')).replace('<body>', '<body><p style="padding:12px;background:#fff2bb;color:#111">离线自动化验收：测试账户及预算；没有调用真实风险 API、钱包或付款。</p>');
 let posts = 0, scans = 0, uncertain = false, release, showReceipt = false;
+let failedReceipt = false;
 let apiRequests = 0;
 const held = new Promise(resolve => { release = resolve; });
 const unexpected = [];
@@ -29,7 +30,7 @@ try {
     const json = body => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
     if(url.pathname==='/' && request.method()==='GET') { await route.fulfill({status:200,contentType:'text/html',body:html}); return; }
     if(url.pathname==='/api/private-risk/status' && request.method()==='GET') {
-      await json({contractRevision:'private-risk-scan-v1',mode:'private-scan-only',paymentEnabled:false,ready:false,message:'离线验收：不调用风险 API。',maxRequests:3,usedRequests:showReceipt?1:0,records:showReceipt?[{candidateId:'H1',state:'completed',attemptedAt:'2026-09-27T00:00:00Z',risk:{address:'0x1d19b52b54e7ef5ea1a4b40b616165e798eac9f8',checkedAt:'2026-09-27T00:00:01Z',provider:'intercepta',source:'live',decision:'hold',reasons:['TEST-SECRET-MUST-NOT-EXPORT'],scan:{transport:'received',requestedNetwork:'eip155:1',coverage:'unverified',semantics:'unverified',toxicScore:0,traitsCount:0,traitLabels:[]}}}]:[]}); return;
+      await json({contractRevision:'private-risk-scan-v1',mode:'private-scan-only',paymentEnabled:false,ready:false,message:'离线验收：不调用风险 API。',maxRequests:3,usedRequests:showReceipt?1:0,records:showReceipt?[{candidateId:'H1',state:failedReceipt?'unavailable':'completed',attemptedAt:'2026-09-27T00:00:00Z',risk:{address:'0x1d19b52b54e7ef5ea1a4b40b616165e798eac9f8',checkedAt:'2026-09-27T00:00:01Z',provider:'intercepta',source:failedReceipt?'unavailable':'live',decision:'hold',reasons:['TEST-SECRET-MUST-NOT-EXPORT'],scan:{httpStatus:failedReceipt?429:200,diagnosticCode:failedReceipt?'http-error':'observed',unknownTraitsCount:0,additionalFieldsCount:0,transport:failedReceipt?'unavailable':'received',requestedNetwork:'eip155:1',coverage:'unverified',semantics:'unverified',toxicScore:0,traitsCount:0,traitLabels:[]}}}]:[]}); return;
     }
     if(url.pathname==='/api/task-grant') {
       if(request.method()==='GET') { await json(await store.status()); return; }
@@ -91,7 +92,9 @@ try {
   const download=await downloadEvent;
   const exported=await readFile(await download.path(),'utf8');
   const receipt=JSON.parse(exported);
-  assert.equal(receipt.schemaVersion,'risk-receipt-v1');
+  assert.equal(receipt.schemaVersion,'risk-receipt-v2');
+  assert.equal(receipt.httpStatus,200);
+  assert.equal(receipt.diagnosticCode,'observed');
   assert.equal(receipt.rawToxicScore,0);
   assert.equal(receipt.paymentEnabled,false);
   assert.equal(receipt.decision,'hold');
@@ -100,7 +103,14 @@ try {
   await page.getByLabel('真实候选地址',{exact:true}).selectOption('H2');
   await expect(exportButton).toBeDisabled();
   assert.equal(apiRequests,beforeExport);
-  console.log(JSON.stringify({result:'PASS',scope:'offline browser UI + real temporary Grant store',checks:['invalid budget blocked','no optimistic save','reload preserves grant','mobile no horizontal overflow','lost response recovered with GET only','receipt download retains raw zero and omits free text','download and selection do not request data'],grantPosts:posts,riskCalls:scans,unexpectedRequests:unexpected.length,livePayment:false},null,2));
+  failedReceipt=true; await page.reload();
+  const failureDownload=page.waitForEvent('download'); await exportButton.click();
+  const failedText=await readFile(await (await failureDownload).path(),'utf8');
+  const failed=JSON.parse(failedText);
+  assert.equal(failed.httpStatus,429); assert.equal(failed.diagnosticCode,'http-error');
+  assert.equal(failed.rawToxicScore,null); assert.equal(failed.decision,'hold');
+  assert.ok(!failedText.includes('TEST-SECRET-MUST-NOT-EXPORT')); assert.equal(scans,0);
+  console.log(JSON.stringify({result:'PASS',scope:'offline browser UI + real temporary Grant store',checks:['invalid budget blocked','no optimistic save','reload preserves grant','mobile no horizontal overflow','lost response recovered with GET only','receipt download retains raw zero and omits free text','download and selection do not request data','failed receipt preserves HTTP diagnostic without enabling payment'],grantPosts:posts,riskCalls:scans,unexpectedRequests:unexpected.length,livePayment:false},null,2));
 } finally {
   if(browser) await browser.close();
   await rm(directory,{recursive:true,force:true});

@@ -46,6 +46,14 @@ function ScanDiagnostics({ risk }: { risk: RiskResult }) {
         <div><dt>toxicScore 字段类型</dt><dd>{schema.toxicScoreType}</dd></div>
         <div><dt>traits 字段类型</dt><dd>{schema.traitsType}</dd></div>
         {schema.traitsCount !== undefined && <div><dt>响应 traits 数组长度</dt><dd>{schema.traitsCount}</dd></div>}
+        {schema.traitDiagnostic && <>
+          <div><dt>检查的条目 / 总数</dt><dd>{schema.traitDiagnostic.inspectedItems} / {schema.traitDiagnostic.totalItems}</dd></div>
+          <div><dt>结构不符合要求的条目</dt><dd>{schema.traitDiagnostic.malformedItems}</dd></div>
+          <div><dt>已知 / 未知标签条目</dt><dd>{schema.traitDiagnostic.knownTraitItems} / {schema.traitDiagnostic.unknownTraitItems}</dd></div>
+          <div><dt>已知条目 risk 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingRiskCount} / {schema.traitDiagnostic.invalidRiskTypeCount}</dd></div>
+          <div><dt>已知条目 txsCount 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingTxsCount} / {schema.traitDiagnostic.invalidTxsCountTypeCount}</dd></div>
+          <div><dt>已知条目 description 缺失 / 类型错误</dt><dd>{schema.traitDiagnostic.missingDescriptionCount} / {schema.traitDiagnostic.invalidDescriptionTypeCount}</dd></div>
+        </>}
       </>}
     </dl>
     {schema && <p className="private-risk-muted">结构摘要仅包含字段类型和数量；不显示未知字段名、自由文本或原始响应。</p>}

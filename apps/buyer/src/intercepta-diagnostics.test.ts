@@ -47,3 +47,11 @@ it('timeouts once without inventing a response status', async () => {
   expect(result.scan?.httpStatus).toBeUndefined();
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+it('accepts unknown variants without old fields, retaining only known facts and counts', async () => {
+  const result = await run({ toxicScore: 9, traits: [trait, { name: 'PRIVATE-TEXT', nested: { key: 'FAKE-SECRET' } }] });
+  expect(result).toMatchObject({ source:'live', decision:'hold', scan:{ traitsCount:2, unknownTraitsCount:1, traitLabels:['known_scammer'] } });
+});
+it('reports which known fields are missing without leaking trait contents', async () => {
+  const result = await run({ toxicScore: 9, traits: [{name:'known_scammer'}, {name:'PRIVATE-TEXT'}] });
+  expect(result).toMatchObject({ source:'unavailable', scan:{ diagnosticCode:'schema-unsupported', schemaDiagnostic:{traitDiagnostic:{missingRiskCount:1, missingTxsCount:1, missingDescriptionCount:1, knownTraitItems:1, unknownTraitItems:1}} } });
+});

@@ -1,0 +1,32 @@
+name: Offline Demo CI
+on:
+  push:
+    branches: [main, 'demo/**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Offline risk and diagnostic tests
+        run: >-
+          npx vitest run
+          apps/buyer/src/intercepta-diagnostics.test.ts
+          apps/buyer/src/intercepta-response.test.ts
+          apps/buyer/src/intercepta.test.ts
+          apps/private-risk/src/app.test.ts
+          apps/web/src/PrivateRiskDiagnostics.test.tsx
+          shared/scan-diagnostic.test.ts
+          shared/risk-receipt.test.ts
+          --maxWorkers=1
+      - run: npm run private:risk:build

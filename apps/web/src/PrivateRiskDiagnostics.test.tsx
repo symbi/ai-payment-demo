@@ -1,3 +1,4 @@
+import { describeScanSchema } from '../../../shared/scan-diagnostic.ts';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
@@ -71,4 +72,12 @@ it('does not render unvalidated schema names or type text', () => {
     toxicScoreType: 'SECRET_TYPE', traitsType: 'array' } });
   expect(html).not.toContain('SECRET_KEY_NAME');
   expect(html).not.toContain('SECRET_TYPE');
+});
+
+it('renders bounded known-field failures and unknown counts without trait values', () => {
+  const html = render({ transport:'received', httpStatus:200, diagnosticCode:'schema-unsupported', schemaDiagnostic:describeScanSchema({toxicScore:1, traits:[{name:'known_scammer'},{name:'SECRET-UNKNOWN'}]}) });
+  expect(html).toContain('risk 缺失');
+  expect(html).toContain('description 缺失');
+  expect(html).toContain('结构不符合要求的条目');
+  expect(html).not.toContain('SECRET');
 });

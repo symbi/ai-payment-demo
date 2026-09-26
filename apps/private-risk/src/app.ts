@@ -131,6 +131,7 @@ function sanitizedRecord(candidateId: PrivateCandidateId, attemptedAt: string, r
     ...(raw.scan.httpStatus === undefined ? {} : { httpStatus: raw.scan.httpStatus }),
     ...(raw.scan.diagnosticCode === undefined ? {} : { diagnosticCode: raw.scan.diagnosticCode }),
     ...(raw.scan.schemaDiagnostic === undefined ? {} : { schemaDiagnostic: {
+      ...(raw.scan.schemaDiagnostic.traitDiagnostic === undefined ? {} : { traitDiagnostic: { ...raw.scan.schemaDiagnostic.traitDiagnostic } }),
       topLevelKeys: [...raw.scan.schemaDiagnostic.topLevelKeys], otherKeysCount: raw.scan.schemaDiagnostic.otherKeysCount,
       toxicScoreType: raw.scan.schemaDiagnostic.toxicScoreType, traitsType: raw.scan.schemaDiagnostic.traitsType,
       ...(raw.scan.schemaDiagnostic.traitsCount === undefined ? {} : { traitsCount: raw.scan.schemaDiagnostic.traitsCount }),

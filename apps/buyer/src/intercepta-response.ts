@@ -55,12 +55,17 @@ export function parseInterceptaResponse(value: unknown): InterceptaResponse {
     const traits: InterceptaTrait[] = [];
     let unknownTraitsCount = 0;
     for (const trait of value.traits) {
-      if (!isRecord(trait) || !isFiniteNumber(trait.risk) || typeof trait.name !== 'string' ||
-          trait.name.length === 0 || trait.name.length > 120 || !isFiniteNumber(trait.txsCount) ||
-          typeof trait.description !== 'string') {
+      // Unknown variants have no established risk/count/description contract.
+      // Inspect only a bounded object and its bounded name; never consume its values.
+      if (!isRecord(trait) || Object.keys(trait).length > 20 || !Object.hasOwn(trait, 'name') ||
+          typeof trait.name !== 'string' || trait.name.trim().length === 0 || trait.name.length > 120) {
         return { kind: 'unknown', reason: 'invalid-response' };
       }
       if (!traitNames.has(trait.name)) { unknownTraitsCount++; continue; }
+      if (!Object.hasOwn(trait, 'risk') || !Object.hasOwn(trait, 'txsCount') || !Object.hasOwn(trait, 'description') ||
+          !isFiniteNumber(trait.risk) || !isFiniteNumber(trait.txsCount) || typeof trait.description !== 'string') {
+        return { kind: 'unknown', reason: 'invalid-response' };
+      }
       traits.push({
         risk: trait.risk,
         name: trait.name as InterceptaTraitName,
